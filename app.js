@@ -67,7 +67,7 @@ const defaultParameters = {
 
 const sides = {
   left: {
-    label: 'Left',
+    label: 'Blue',
     color: '#2f6f9f',
     dark: '#174361',
     params: { ...defaultParameters.left },
@@ -79,7 +79,7 @@ const sides = {
     barrelAngle: null,
   },
   right: {
-    label: 'Right',
+    label: 'Red',
     color: '#c2412d',
     dark: '#7f2419',
     params: { ...defaultParameters.right },
@@ -194,8 +194,8 @@ function trueAggressionAnswer() {
 }
 
 function answerLabel(answer) {
-  if (answer === 'left') return 'Left';
-  if (answer === 'right') return 'Right';
+  if (answer === 'left') return 'Blue';
+  if (answer === 'right') return 'Red';
   return 'About equal';
 }
 
@@ -223,7 +223,7 @@ function comparisonText(leftValue, rightValue) {
   const percentGap = Math.round(relativeDifference * 100);
 
   if (relativeDifference <= equalityTolerance) return `about equal (${percentGap}% gap)`;
-  return leftValue > rightValue ? `left higher (${percentGap}% gap)` : `right higher (${percentGap}% gap)`;
+  return leftValue > rightValue ? `Blue higher (${percentGap}% gap)` : `Red higher (${percentGap}% gap)`;
 }
 
 function buildTrialSnapshot(answer, number) {
@@ -634,11 +634,11 @@ function updateRevealPanel() {
   elements.resultText.textContent = correctAnswer === 'equal'
     ? 'The sides were about equal'
     : `${answerLabel(correctAnswer)} was more aggressive`;
-  elements.resultDetail.textContent = `Expected aggression = launch frequency x mean explosion size. Timing changes clustering but preserves the same long-run launch frequency. Left: ${formatAggressionProduct('left')}/min; right: ${formatAggressionProduct('right')}/min. About equal means within 10%. You chose ${answerLabel(simulation.selectedAnswer)}.`;
+  elements.resultDetail.textContent = `Expected aggression = launch frequency x mean explosion size. Timing changes clustering but preserves the same long-run launch frequency. Blue: ${formatAggressionProduct('left')}/min; Red: ${formatAggressionProduct('right')}/min. About equal means within 10%. You chose ${answerLabel(simulation.selectedAnswer)}.`;
   elements.revealPanel.classList.toggle('is-correct', correct);
   elements.revealPanel.classList.toggle('is-incorrect', !correct);
   elements.revealGrid.innerHTML = `
-    <div class="reveal-row reveal-head"><span>Measure</span><strong>Left</strong><strong>Right</strong></div>
+    <div class="reveal-row reveal-head"><span>Measure</span><strong>Blue</strong><strong>Red</strong></div>
     ${revealRow('Launch frequency', parameterConfig.rate.formatter(sides.left.params.rate), parameterConfig.rate.formatter(sides.right.params.rate))}
     ${revealRow('Launch timing', timingLabel(sides.left.params.timing), timingLabel(sides.right.params.timing))}
     ${revealRow('Explosion mean', Math.round(sides.left.params.mean), Math.round(sides.right.params.mean))}
@@ -677,7 +677,7 @@ function updateHistoryPanel() {
 
     const metrics = document.createElement('p');
     metrics.className = 'history-metrics';
-    metrics.textContent = `Timing L ${timingLabel(trial.left.params.timing)} / R ${timingLabel(trial.right.params.timing)}; expected L ${Math.round(trial.left.expectedAggression)} / R ${Math.round(trial.right.expectedAggression)}; observed L ${Math.round(trial.left.observedAggression)} / R ${Math.round(trial.right.observedAggression)}`;
+    metrics.textContent = `Timing Blue ${timingLabel(trial.left.params.timing)} / Red ${timingLabel(trial.right.params.timing)}; expected Blue ${Math.round(trial.left.expectedAggression)} / Red ${Math.round(trial.right.expectedAggression)}; observed Blue ${Math.round(trial.left.observedAggression)} / Red ${Math.round(trial.right.observedAggression)}`;
 
     item.append(title, decision, metrics);
     return item;
@@ -770,9 +770,9 @@ function drawBattlefield(width, height) {
   ctx.fillStyle = '#51606b';
   ctx.font = '700 12px system-ui, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('LEFT SIDE', 22, groundY - 16);
+  ctx.fillText('BLUE', 22, groundY - 16);
   ctx.textAlign = 'right';
-  ctx.fillText('RIGHT SIDE', width - 22, groundY - 16);
+  ctx.fillText('RED', width - 22, groundY - 16);
 }
 
 function drawBatteries(width, height) {
