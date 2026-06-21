@@ -5,17 +5,19 @@ This repository is a static browser simulation published with GitHub Pages:
 https://gregconradismith.github.io/retaliation-simulation/
 
 It follows the dependency-free static/PWA pattern used by `polyqual-game`.
-There is no MATLAB reference script for this project. Greg will specify the
-actual game mechanics in prose; until then, treat the current dynamics as a
-replaceable toy model, not as a validated model of retaliation, conflict, or
-social behavior.
+There is no MATLAB reference script for this project. The current game is a
+stylized artillery exchange between two sides. Preserve the central behavior:
+each side launches across the canvas, launch timing is controlled by that
+side's frequency, and explosion sizes are sampled from side-specific normal
+distributions with configurable mean and variance. Keep controls for the left
+side on the left and controls for the right side on the right.
 
 Important files:
 
 - `index.html` is the app shell and includes PWA/iPhone metadata.
 - `styles.css` contains responsive styling.
-- `app.js` contains the provisional simulation model, canvas drawing, controls,
-  scoring/status metrics, and service-worker registration.
+- `app.js` contains stochastic launch timing, normal explosion-size sampling,
+  canvas drawing, controls, event logging, and service-worker registration.
 - `manifest.webmanifest` defines installable app metadata.
 - `service-worker.js` caches the app shell for offline/PWA behavior.
 - `icons/` contains app icons.
@@ -42,8 +44,9 @@ For UI, canvas, scoring, or interaction changes, preview locally:
 python3 -m http.server 8765
 ```
 
-Then open `http://127.0.0.1:8765/` and verify the canvas is nonblank, controls
-work, status metrics update, and desktop plus mobile-width layouts are usable.
+Then open `http://127.0.0.1:8765/` and verify artillery arcs render, explosions
+appear at impact, left and right controls affect their respective sides, event
+logs update, and desktop plus mobile-width layouts are usable.
 
 Do not commit local noise such as `.DS_Store`, editor files, or generated
 temporary artifacts.

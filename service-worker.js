@@ -1,12 +1,12 @@
 'use strict';
 
-const cacheName = 'retaliation-simulation-v3';
+const cacheName = 'retaliation-simulation-v4';
 const appShell = [
   './',
   './index.html',
   './further-reading.html',
-  './styles.css?v=2026-06-21',
-  './app.js?v=2026-06-21',
+  './styles.css?v=2026-06-21-artillery',
+  './app.js?v=2026-06-21-artillery',
   './manifest.webmanifest',
   './icons/retaliation-icon.svg',
   './icons/retaliation-icon-180.png',

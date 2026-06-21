@@ -4,49 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f7f3">
-  <title>Model Notes: Retaliation Simulation</title>
+  <title>Model Notes: The Retaliation Simulation</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-artillery">
 </head>
 <body>
   <main class="reading-shell">
     <article class="reading-page">
       <p class="eyebrow">Model notes</p>
-      <h1>Retaliation Simulation</h1>
+      <h1>The Retaliation Simulation</h1>
       <p class="lede">
-        The current model is a scaffold for building the game. It should be
-        treated as a toy dynamical system until the intended rules are specified.
+        The current model is an artillery exchange between two sides. It is a
+        toy perception game, not a validated model of conflict escalation.
       </p>
 
       <section>
-        <h2>Current state variables</h2>
+        <h2>Launch timing</h2>
         <p>
-          Each agent has a grievance level between zero and one. External
-          provocations raise grievance. Agents above a response threshold can
-          transmit part of their grievance to a neighbor. Repair damps grievance
-          at every step.
+          Each side has its own launch frequency. The browser samples launch
+          waiting times from an exponential distribution with that rate, so the
+          firing pattern is stochastic rather than perfectly periodic.
         </p>
       </section>
 
       <section>
-        <h2>What is established here</h2>
+        <h2>Explosion sizes</h2>
         <p>
-          The implementation is only a browser-ready simulation scaffold:
-          parameter controls, canvas visualization, status metrics, offline
-          caching, and GitHub Pages deployment. No empirical or theoretical
-          claim about retaliation is implied by the placeholder equations.
+          Explosion sizes are sampled independently for each launch. If a side
+          has mean mu and variance sigma squared, the unbounded draw is
+          normally distributed with those parameters and then clipped to a
+          positive display range so the canvas visualization remains usable.
         </p>
       </section>
 
       <section>
-        <h2>Likely next decisions</h2>
+        <h2>Current limitations</h2>
         <ul class="resource-list">
-          <li>Define the player objective and scoring rule.</li>
-          <li>Specify whether agents should represent individuals, groups, or abstract states.</li>
-          <li>Choose deterministic, stochastic, networked, or game-theoretic update rules.</li>
-          <li>Decide what feedback should be visible before and after each player action.</li>
+          <li>The two sides do not yet react strategically to one another.</li>
+          <li>Launch rate and explosion size are independent within each side.</li>
+          <li>The visual target positions are cosmetic and do not accumulate damage.</li>
+          <li>No player objective or scoring rule has been defined yet.</li>
         </ul>
       </section>
 

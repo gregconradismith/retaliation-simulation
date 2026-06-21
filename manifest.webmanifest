@@ -1,7 +1,7 @@
 {
   "name": "Retaliation Simulation",
   "short_name": "Retaliation",
-  "description": "A static browser simulation scaffold for retaliation and repair dynamics.",
+  "description": "A static browser game for assessing perception of conflict dynamics.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

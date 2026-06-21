@@ -12,10 +12,51 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-artillery">
 </head>
 <body>
   <main class="app-shell">
+    <aside class="faction-panel left-panel" aria-label="Left side controls">
+      <header class="faction-header">
+        <p class="eyebrow">Left side</p>
+        <h2>Left Battery</h2>
+      </header>
+
+      <section class="control-card" aria-labelledby="leftRateLabel">
+        <label id="leftRateLabel">Launch frequency</label>
+        <div class="stepper-row">
+          <button type="button" data-side="left" data-field="rate" data-delta="-1" aria-label="Decrease left launch frequency">-</button>
+          <output id="leftRateValue" for="leftRateLabel">10 / min</output>
+          <button type="button" data-side="left" data-field="rate" data-delta="1" aria-label="Increase left launch frequency">+</button>
+        </div>
+      </section>
+
+      <section class="control-card" aria-labelledby="leftMeanLabel">
+        <label id="leftMeanLabel">Explosion mean</label>
+        <div class="stepper-row">
+          <button type="button" data-side="left" data-field="mean" data-delta="-1" aria-label="Decrease left explosion mean">-</button>
+          <output id="leftMeanValue" for="leftMeanLabel">42</output>
+          <button type="button" data-side="left" data-field="mean" data-delta="1" aria-label="Increase left explosion mean">+</button>
+        </div>
+      </section>
+
+      <section class="control-card" aria-labelledby="leftVarianceLabel">
+        <label id="leftVarianceLabel">Explosion variance</label>
+        <div class="stepper-row">
+          <button type="button" data-side="left" data-field="variance" data-delta="-1" aria-label="Decrease left explosion variance">-</button>
+          <output id="leftVarianceValue" for="leftVarianceLabel">64</output>
+          <button type="button" data-side="left" data-field="variance" data-delta="1" aria-label="Increase left explosion variance">+</button>
+        </div>
+      </section>
+
+      <section class="side-stats" aria-label="Left side statistics">
+        <p><span>Launches</span><strong id="leftLaunchesValue">0</strong></p>
+        <p><span>Impacts</span><strong id="leftImpactsValue">0</strong></p>
+        <p><span>Last size</span><strong id="leftLastSizeValue">-</strong></p>
+        <p><span>Mean size</span><strong id="leftMeanSizeValue">-</strong></p>
+      </section>
+    </aside>
+
     <section class="play-area" aria-labelledby="simulation-title">
       <div class="top-bar">
         <div>
@@ -23,83 +64,76 @@
           <h1 id="simulation-title">The Retaliation Simulation</h1>
         </div>
         <div class="status-strip" aria-label="Simulation status">
-          <span id="stepLabel">Step 0</span>
-          <span id="statusLabel">Stable</span>
-          <span id="scoreLabel">Containment 100</span>
+          <span id="timeLabel">00:00.0</span>
+          <span id="inFlightLabel">In flight 0</span>
+          <span id="impactLabel">Impacts 0</span>
         </div>
       </div>
 
       <div class="canvas-wrap">
-        <canvas id="simulationCanvas" width="1200" height="760" aria-label="Animated network of retaliatory interactions"></canvas>
+        <canvas id="simulationCanvas" width="1200" height="720" aria-label="Artillery arcs and explosions between two sides"></canvas>
       </div>
 
       <div class="command-row" aria-label="Simulation controls">
         <div class="button-cluster">
           <button class="primary-button" id="playButton" type="button">Run</button>
-          <button id="stepButton" type="button">Step</button>
           <button id="resetButton" type="button">Reset</button>
         </div>
         <p id="eventText" aria-live="polite">Ready</p>
       </div>
-    </section>
 
-    <aside class="side-panel" aria-label="Parameters and metrics">
-      <section class="metric-card" aria-label="Current metrics">
-        <div class="metric-main">
-          <span id="meanLabel">0.00</span>
-          <span>mean grievance</span>
-        </div>
-        <div class="metric-grid">
-          <p><span>Active</span><strong id="activeLabel">0%</strong></p>
-          <p><span>Peak</span><strong id="peakLabel">0.00</strong></p>
-          <p><span>Cascades</span><strong id="cascadeLabel">0</strong></p>
-          <p><span>Floor</span><strong id="bestLabel">100</strong></p>
-        </div>
-      </section>
-
-      <div class="control-group">
-        <label for="populationSlider">Population</label>
-        <div class="range-row">
-          <input id="populationSlider" type="range" min="12" max="72" value="32" step="4">
-          <output id="populationValue" for="populationSlider">32</output>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <label for="retaliationSlider">Retaliation</label>
-        <div class="range-row">
-          <input id="retaliationSlider" type="range" min="0" max="100" value="54">
-          <output id="retaliationValue" for="retaliationSlider">54</output>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <label for="repairSlider">Repair</label>
-        <div class="range-row">
-          <input id="repairSlider" type="range" min="0" max="100" value="42">
-          <output id="repairValue" for="repairSlider">42</output>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <label for="provocationSlider">Provocations</label>
-        <div class="range-row">
-          <input id="provocationSlider" type="range" min="0" max="100" value="24">
-          <output id="provocationValue" for="provocationSlider">24</output>
-        </div>
-      </div>
-
-      <section class="history" aria-label="Recent events">
-        <h2>Recent Events</h2>
+      <section class="event-panel" aria-label="Launch and impact log">
+        <h2>Launch and Impact Log</h2>
         <ol id="eventList"></ol>
       </section>
 
       <nav class="reading-nav" aria-label="Further reading">
         <a href="further-reading.html">Model Notes</a>
       </nav>
+    </section>
+
+    <aside class="faction-panel right-panel" aria-label="Right side controls">
+      <header class="faction-header">
+        <p class="eyebrow">Right side</p>
+        <h2>Right Battery</h2>
+      </header>
+
+      <section class="control-card" aria-labelledby="rightRateLabel">
+        <label id="rightRateLabel">Launch frequency</label>
+        <div class="stepper-row">
+          <button type="button" data-side="right" data-field="rate" data-delta="-1" aria-label="Decrease right launch frequency">-</button>
+          <output id="rightRateValue" for="rightRateLabel">8 / min</output>
+          <button type="button" data-side="right" data-field="rate" data-delta="1" aria-label="Increase right launch frequency">+</button>
+        </div>
+      </section>
+
+      <section class="control-card" aria-labelledby="rightMeanLabel">
+        <label id="rightMeanLabel">Explosion mean</label>
+        <div class="stepper-row">
+          <button type="button" data-side="right" data-field="mean" data-delta="-1" aria-label="Decrease right explosion mean">-</button>
+          <output id="rightMeanValue" for="rightMeanLabel">50</output>
+          <button type="button" data-side="right" data-field="mean" data-delta="1" aria-label="Increase right explosion mean">+</button>
+        </div>
+      </section>
+
+      <section class="control-card" aria-labelledby="rightVarianceLabel">
+        <label id="rightVarianceLabel">Explosion variance</label>
+        <div class="stepper-row">
+          <button type="button" data-side="right" data-field="variance" data-delta="-1" aria-label="Decrease right explosion variance">-</button>
+          <output id="rightVarianceValue" for="rightVarianceLabel">100</output>
+          <button type="button" data-side="right" data-field="variance" data-delta="1" aria-label="Increase right explosion variance">+</button>
+        </div>
+      </section>
+
+      <section class="side-stats" aria-label="Right side statistics">
+        <p><span>Launches</span><strong id="rightLaunchesValue">0</strong></p>
+        <p><span>Impacts</span><strong id="rightImpactsValue">0</strong></p>
+        <p><span>Last size</span><strong id="rightLastSizeValue">-</strong></p>
+        <p><span>Mean size</span><strong id="rightMeanSizeValue">-</strong></p>
+      </section>
     </aside>
   </main>
 
-  <script src="app.js?v=2026-06-21"></script>
+  <script src="app.js?v=2026-06-21-artillery"></script>
 </body>
 </html>

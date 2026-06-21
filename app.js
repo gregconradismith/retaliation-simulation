@@ -4,220 +4,271 @@ const canvas = document.getElementById('simulationCanvas');
 const ctx = canvas.getContext('2d');
 
 const elements = {
-  stepLabel: document.getElementById('stepLabel'),
-  statusLabel: document.getElementById('statusLabel'),
-  scoreLabel: document.getElementById('scoreLabel'),
-  meanLabel: document.getElementById('meanLabel'),
-  activeLabel: document.getElementById('activeLabel'),
-  peakLabel: document.getElementById('peakLabel'),
-  cascadeLabel: document.getElementById('cascadeLabel'),
-  bestLabel: document.getElementById('bestLabel'),
+  timeLabel: document.getElementById('timeLabel'),
+  inFlightLabel: document.getElementById('inFlightLabel'),
+  impactLabel: document.getElementById('impactLabel'),
   eventText: document.getElementById('eventText'),
   eventList: document.getElementById('eventList'),
   playButton: document.getElementById('playButton'),
-  stepButton: document.getElementById('stepButton'),
   resetButton: document.getElementById('resetButton'),
-  populationSlider: document.getElementById('populationSlider'),
-  retaliationSlider: document.getElementById('retaliationSlider'),
-  repairSlider: document.getElementById('repairSlider'),
-  provocationSlider: document.getElementById('provocationSlider'),
-  populationValue: document.getElementById('populationValue'),
-  retaliationValue: document.getElementById('retaliationValue'),
-  repairValue: document.getElementById('repairValue'),
-  provocationValue: document.getElementById('provocationValue'),
+  leftRateValue: document.getElementById('leftRateValue'),
+  leftMeanValue: document.getElementById('leftMeanValue'),
+  leftVarianceValue: document.getElementById('leftVarianceValue'),
+  leftLaunchesValue: document.getElementById('leftLaunchesValue'),
+  leftImpactsValue: document.getElementById('leftImpactsValue'),
+  leftLastSizeValue: document.getElementById('leftLastSizeValue'),
+  leftMeanSizeValue: document.getElementById('leftMeanSizeValue'),
+  rightRateValue: document.getElementById('rightRateValue'),
+  rightMeanValue: document.getElementById('rightMeanValue'),
+  rightVarianceValue: document.getElementById('rightVarianceValue'),
+  rightLaunchesValue: document.getElementById('rightLaunchesValue'),
+  rightImpactsValue: document.getElementById('rightImpactsValue'),
+  rightLastSizeValue: document.getElementById('rightLastSizeValue'),
+  rightMeanSizeValue: document.getElementById('rightMeanSizeValue'),
 };
 
-const threshold = 0.34;
-const maxHistory = 160;
-let agents = [];
-let pulses = [];
-let history = [];
-let events = [];
-let running = false;
-let lastAdvance = 0;
+const parameterConfig = {
+  rate: { min: 0, max: 30, step: 1, formatter: value => `${value} / min` },
+  mean: { min: 10, max: 90, step: 5, formatter: value => `${value}` },
+  variance: { min: 4, max: 400, step: 16, formatter: value => `${value}` },
+};
 
-const state = {
-  step: 0,
-  cascades: 0,
-  containmentFloor: 100,
-  previousCascade: false,
-  metrics: {
-    mean: 0,
-    active: 0,
-    peak: 0,
-    containment: 100,
-    status: 'Stable',
+const sideKeys = ['left', 'right'];
+const sides = {
+  left: {
+    label: 'Left',
+    color: '#2f6f9f',
+    dark: '#174361',
+    params: { rate: 10, mean: 42, variance: 64 },
+    launches: 0,
+    impacts: 0,
+    totalSize: 0,
+    lastSize: null,
+    nextLaunchAt: Infinity,
   },
+  right: {
+    label: 'Right',
+    color: '#c2412d',
+    dark: '#7f2419',
+    params: { rate: 8, mean: 50, variance: 100 },
+    launches: 0,
+    impacts: 0,
+    totalSize: 0,
+    lastSize: null,
+    nextLaunchAt: Infinity,
+  },
+};
+
+const simulation = {
+  running: false,
+  time: 0,
+  lastTimestamp: null,
+  projectiles: [],
+  explosions: [],
+  events: [],
 };
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function readParameters() {
-  return {
-    population: Number(elements.populationSlider.value),
-    retaliation: Number(elements.retaliationSlider.value) / 100,
-    repair: Number(elements.repairSlider.value) / 100,
-    provocation: Number(elements.provocationSlider.value) / 100,
-  };
+function randomRange(min, max) {
+  return min + Math.random() * (max - min);
 }
 
-function updateSliderLabels() {
-  elements.populationValue.value = elements.populationSlider.value;
-  elements.retaliationValue.value = elements.retaliationSlider.value;
-  elements.repairValue.value = elements.repairSlider.value;
-  elements.provocationValue.value = elements.provocationSlider.value;
+function sampleNormal() {
+  const u1 = Math.max(Number.MIN_VALUE, Math.random());
+  const u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+function sampleExplosionSize(side) {
+  const mean = side.params.mean;
+  const standardDeviation = Math.sqrt(side.params.variance);
+  return clamp(mean + standardDeviation * sampleNormal(), 4, 120);
+}
+
+function sampleLaunchWait(ratePerMinute) {
+  if (ratePerMinute <= 0) return Infinity;
+  const ratePerSecond = ratePerMinute / 60;
+  return -Math.log(Math.max(Number.MIN_VALUE, Math.random())) / ratePerSecond;
+}
+
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds - minutes * 60;
+  const wholeSeconds = Math.floor(remainder);
+  const tenths = Math.floor((remainder - wholeSeconds) * 10);
+  return `${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${tenths}`;
+}
+
+function scheduleNextLaunch(sideKey, fromTime, initial = false) {
+  const side = sides[sideKey];
+  const wait = sampleLaunchWait(side.params.rate);
+  const limitedInitialWait = initial && Number.isFinite(wait)
+    ? Math.min(wait, randomRange(0.6, 1.9))
+    : wait;
+  side.nextLaunchAt = fromTime + limitedInitialWait;
+}
+
+function resetSideStats() {
+  sideKeys.forEach(sideKey => {
+    const side = sides[sideKey];
+    side.launches = 0;
+    side.impacts = 0;
+    side.totalSize = 0;
+    side.lastSize = null;
+    scheduleNextLaunch(sideKey, 0, true);
+  });
 }
 
 function resetSimulation() {
-  const { population } = readParameters();
-  agents = Array.from({ length: population }, () => ({
-    grievance: 0.02 + Math.random() * 0.06,
-  }));
-  pulses = [];
-  history = [];
-  events = [];
-  running = false;
-  state.step = 0;
-  state.cascades = 0;
-  state.containmentFloor = 100;
-  state.previousCascade = false;
-  addEvent('System reset');
-  injectProvocation(0.32, Math.floor(population / 4), 'Initial provocation');
-  updateMetrics();
+  simulation.running = false;
+  simulation.time = 0;
+  simulation.lastTimestamp = null;
+  simulation.projectiles = [];
+  simulation.explosions = [];
+  simulation.events = [];
+  resetSideStats();
+  addEvent(0, 'Simulation reset');
   updateInterface();
   draw();
 }
 
-function addEvent(text) {
-  events.unshift({ step: state.step, text });
-  events = events.slice(0, 5);
-  elements.eventText.textContent = text;
+function addEvent(time, text) {
+  const stampedText = `${formatTime(time)} ${text}`;
+  simulation.events.unshift(stampedText);
+  simulation.events = simulation.events.slice(0, 8);
+  elements.eventText.textContent = stampedText;
 }
 
-function injectProvocation(amount, index, label) {
-  const target = index ?? Math.floor(Math.random() * agents.length);
-  agents[target].grievance = clamp(agents[target].grievance + amount, 0, 1);
-  pulses.push({
-    from: target,
-    to: target,
-    intensity: amount,
-    life: 1,
-    kind: 'shock',
+function launchProjectile(sideKey, launchTime) {
+  const side = sides[sideKey];
+  const fromLeft = sideKey === 'left';
+  const size = sampleExplosionSize(side);
+  const duration = randomRange(1.15, 1.85) + clamp(size / 240, 0, 0.35);
+  const startX = fromLeft ? randomRange(0.075, 0.14) : randomRange(0.86, 0.925);
+  const targetX = fromLeft ? randomRange(0.66, 0.92) : randomRange(0.08, 0.34);
+  const startY = randomRange(0.72, 0.80);
+  const targetY = randomRange(0.73, 0.83);
+  const apexY = randomRange(0.12, 0.25) - clamp(size / 700, 0, 0.08);
+
+  simulation.projectiles.push({
+    sideKey,
+    size,
+    launchTime,
+    impactTime: launchTime + duration,
+    startX,
+    startY,
+    targetX,
+    targetY,
+    apexY,
   });
-  addEvent(label ?? `Provocation at agent ${target + 1}`);
+
+  side.launches += 1;
+  addEvent(launchTime, `${side.label} launch`);
 }
 
-function chooseTarget(index, population) {
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  const hop = Math.random() < 0.18 ? 2 : 1;
-  return (index + direction * hop + population) % population;
+function registerImpact(projectile) {
+  const side = sides[projectile.sideKey];
+  side.impacts += 1;
+  side.lastSize = projectile.size;
+  side.totalSize += projectile.size;
+
+  simulation.explosions.push({
+    sideKey: projectile.sideKey,
+    x: projectile.targetX,
+    y: projectile.targetY,
+    size: projectile.size,
+    startTime: projectile.impactTime,
+    duration: 1.05 + clamp(projectile.size / 180, 0, 0.55),
+  });
+
+  addEvent(projectile.impactTime, `${side.label} impact, size ${Math.round(projectile.size)}`);
 }
 
-function simulateStep() {
-  const { retaliation, repair, provocation } = readParameters();
-  const population = agents.length;
-  const additions = Array(population).fill(0);
-  const decay = 0.018 + repair * 0.078;
-  let responses = 0;
-  let strongestPulse = 0;
+function advanceSimulation(deltaSeconds) {
+  simulation.time += deltaSeconds;
 
-  agents.forEach((agent, index) => {
-    const pressure = Math.max(0, agent.grievance - threshold);
-    if (pressure <= 0) return;
-
-    const target = chooseTarget(index, population);
-    const amount = pressure * (0.05 + retaliation * 0.24);
-    additions[target] += amount;
-    agent.grievance = clamp(agent.grievance - pressure * (0.012 + repair * 0.036), 0, 1);
-    strongestPulse = Math.max(strongestPulse, amount);
-    responses += 1;
-    pulses.push({
-      from: index,
-      to: target,
-      intensity: amount,
-      life: 1,
-      kind: 'retaliation',
-    });
+  sideKeys.forEach(sideKey => {
+    const side = sides[sideKey];
+    let launchGuard = 0;
+    while (simulation.time >= side.nextLaunchAt && launchGuard < 12) {
+      const launchTime = side.nextLaunchAt;
+      launchProjectile(sideKey, launchTime);
+      scheduleNextLaunch(sideKey, launchTime);
+      launchGuard += 1;
+    }
   });
 
-  agents = agents.map((agent, index) => {
-    const left = agents[(index - 1 + population) % population].grievance;
-    const right = agents[(index + 1) % population].grievance;
-    const ambient = 0.018 * retaliation * Math.max(0, (left + right) / 2 - threshold);
-    const next = agent.grievance * (1 - decay) + additions[index] + ambient;
-    return { grievance: clamp(next, 0, 1) };
+  const stillInFlight = [];
+  simulation.projectiles.forEach(projectile => {
+    if (simulation.time >= projectile.impactTime) {
+      registerImpact(projectile);
+    } else {
+      stillInFlight.push(projectile);
+    }
   });
+  simulation.projectiles = stillInFlight;
 
-  if (Math.random() < 0.018 + provocation * 0.155) {
-    const amount = 0.15 + Math.random() * (0.16 + provocation * 0.22);
-    injectProvocation(amount, undefined, 'New provocation');
-  } else if (responses > 0 && state.step % 4 === 0) {
-    addEvent(`${responses} retaliatory response${responses === 1 ? '' : 's'}`);
-  } else if (state.step % 16 === 0) {
-    addEvent('Repair dynamics dominate');
-  }
+  simulation.explosions = simulation.explosions.filter(explosion => (
+    simulation.time <= explosion.startTime + explosion.duration
+  ));
 
-  state.step += 1;
-  pulses = pulses.slice(-80);
-  updateMetrics(strongestPulse);
   updateInterface();
 }
 
-function updateMetrics() {
-  const total = agents.reduce((sum, agent) => sum + agent.grievance, 0);
-  const mean = agents.length ? total / agents.length : 0;
-  const activeCount = agents.filter(agent => agent.grievance > threshold).length;
-  const active = agents.length ? activeCount / agents.length : 0;
-  const peak = agents.reduce((max, agent) => Math.max(max, agent.grievance), 0);
-  const containment = Math.round(clamp(100 - mean * 78 - active * 32 - peak * 10, 0, 100));
-  const cascade = active > 0.36 || mean > 0.5;
+function adjustParameter(sideKey, field, direction) {
+  const config = parameterConfig[field];
+  const side = sides[sideKey];
+  const nextValue = clamp(
+    side.params[field] + direction * config.step,
+    config.min,
+    config.max
+  );
 
-  if (cascade && !state.previousCascade) {
-    state.cascades += 1;
-    addEvent('Cascade detected');
+  side.params[field] = nextValue;
+  if (field === 'rate') {
+    scheduleNextLaunch(sideKey, simulation.time, true);
   }
 
-  state.previousCascade = cascade;
-  state.containmentFloor = Math.min(state.containmentFloor, containment);
-
-  let status = 'Stable';
-  if (mean > 0.68 || active > 0.58) {
-    status = 'Crisis';
-  } else if (mean > 0.43 || active > 0.34) {
-    status = 'Escalating';
-  } else if (mean > 0.22 || active > 0.16) {
-    status = 'Tense';
-  }
-
-  state.metrics = { mean, active, peak, containment, status };
-  history.push({ mean, active, containment });
-  history = history.slice(-maxHistory);
+  updateInterface();
 }
 
 function updateInterface() {
-  const { mean, active, peak, containment, status } = state.metrics;
-  elements.stepLabel.textContent = `Step ${state.step}`;
-  elements.statusLabel.textContent = status;
-  elements.scoreLabel.textContent = `Containment ${containment}`;
-  elements.meanLabel.textContent = mean.toFixed(2);
-  elements.activeLabel.textContent = `${Math.round(active * 100)}%`;
-  elements.peakLabel.textContent = peak.toFixed(2);
-  elements.cascadeLabel.textContent = String(state.cascades);
-  elements.bestLabel.textContent = String(state.containmentFloor);
-  elements.playButton.textContent = running ? 'Pause' : 'Run';
-  elements.playButton.classList.toggle('is-running', running);
+  elements.timeLabel.textContent = formatTime(simulation.time);
+  elements.inFlightLabel.textContent = `In flight ${simulation.projectiles.length}`;
+  elements.impactLabel.textContent = `Impacts ${sides.left.impacts + sides.right.impacts}`;
+  elements.playButton.textContent = simulation.running ? 'Pause' : 'Run';
+  elements.playButton.classList.toggle('is-running', simulation.running);
 
-  elements.eventList.innerHTML = events.map(event => (
-    `<li><strong>${event.step}</strong> ${event.text}</li>`
-  )).join('');
+  sideKeys.forEach(sideKey => {
+    const side = sides[sideKey];
+    const prefix = sideKey === 'left' ? 'left' : 'right';
+    elements[`${prefix}RateValue`].textContent = parameterConfig.rate.formatter(side.params.rate);
+    elements[`${prefix}MeanValue`].textContent = parameterConfig.mean.formatter(side.params.mean);
+    elements[`${prefix}VarianceValue`].textContent = parameterConfig.variance.formatter(side.params.variance);
+    elements[`${prefix}LaunchesValue`].textContent = String(side.launches);
+    elements[`${prefix}ImpactsValue`].textContent = String(side.impacts);
+    elements[`${prefix}LastSizeValue`].textContent = side.lastSize === null
+      ? '-'
+      : String(Math.round(side.lastSize));
+    elements[`${prefix}MeanSizeValue`].textContent = side.impacts === 0
+      ? '-'
+      : String(Math.round(side.totalSize / side.impacts));
+  });
+
+  elements.eventList.replaceChildren(...simulation.events.map(eventText => {
+    const item = document.createElement('li');
+    item.textContent = eventText;
+    return item;
+  }));
 }
 
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  const width = Math.max(640, Math.floor(rect.width * ratio));
+  const width = Math.max(620, Math.floor(rect.width * ratio));
   const height = Math.max(420, Math.floor(rect.height * ratio));
 
   if (canvas.width !== width || canvas.height !== height) {
@@ -229,224 +280,254 @@ function resizeCanvas() {
   return { width: width / ratio, height: height / ratio };
 }
 
-function agentPositions(width, height) {
-  const chartHeight = 118;
-  const centerX = width / 2;
-  const centerY = (height - chartHeight) / 2 + 4;
-  const radius = Math.max(110, Math.min(width, height - chartHeight) * 0.34);
-
-  return agents.map((agent, index) => {
-    const angle = -Math.PI / 2 + index * (Math.PI * 2 / agents.length);
-    return {
-      x: centerX + Math.cos(angle) * radius,
-      y: centerY + Math.sin(angle) * radius,
-      grievance: agent.grievance,
-    };
-  });
+function toCanvas(point, width, height) {
+  return {
+    x: point.x * width,
+    y: point.y * height,
+  };
 }
 
-function colorForGrievance(value) {
-  if (value < threshold) {
-    const mix = value / threshold;
-    return blend('#d8eadf', '#f2c14e', mix);
-  }
+function projectilePoint(projectile, progress, width, height) {
+  const start = toCanvas({ x: projectile.startX, y: projectile.startY }, width, height);
+  const target = toCanvas({ x: projectile.targetX, y: projectile.targetY }, width, height);
+  const control = toCanvas({
+    x: (projectile.startX + projectile.targetX) / 2,
+    y: projectile.apexY,
+  }, width, height);
+  const inverse = 1 - progress;
 
-  const mix = clamp((value - threshold) / (1 - threshold), 0, 1);
-  return blend('#f2c14e', '#c2412d', mix);
-}
-
-function blend(a, b, t) {
-  const first = hexToRgb(a);
-  const second = hexToRgb(b);
-  const mixed = first.map((channel, index) => (
-    Math.round(channel + (second[index] - channel) * t)
-  ));
-  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
-}
-
-function hexToRgb(hex) {
-  const value = Number.parseInt(hex.slice(1), 16);
-  return [
-    (value >> 16) & 255,
-    (value >> 8) & 255,
-    value & 255,
-  ];
+  return {
+    x: inverse * inverse * start.x + 2 * inverse * progress * control.x + progress * progress * target.x,
+    y: inverse * inverse * start.y + 2 * inverse * progress * control.y + progress * progress * target.y,
+  };
 }
 
 function draw() {
   const { width, height } = resizeCanvas();
   ctx.clearRect(0, 0, width, height);
-  drawBackground(width, height);
-
-  const positions = agentPositions(width, height);
-  drawLinks(positions);
-  drawPulses(positions);
-  drawAgents(positions);
-  drawCenterGauge(width, height);
-  drawHistory(width, height);
+  drawBattlefield(width, height);
+  drawProjectilePaths(width, height);
+  drawExplosions(width, height);
+  drawProjectiles(width, height);
+  drawBatteries(width, height);
+  drawTimeline(width, height);
 }
 
-function drawBackground(width, height) {
-  ctx.fillStyle = '#ffffff';
+function drawBattlefield(width, height) {
+  const sky = ctx.createLinearGradient(0, 0, 0, height);
+  sky.addColorStop(0, '#e8f3f9');
+  sky.addColorStop(0.58, '#fbfcfb');
+  sky.addColorStop(1, '#efe3cf');
+  ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = '#edf2ee';
-  ctx.lineWidth = 1;
-  for (let x = 24; x < width; x += 48) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
+  ctx.fillStyle = 'rgba(47, 111, 159, 0.08)';
+  ctx.fillRect(0, 0, width * 0.5, height);
+  ctx.fillStyle = 'rgba(194, 65, 45, 0.08)';
+  ctx.fillRect(width * 0.5, 0, width * 0.5, height);
 
-  for (let y = 24; y < height; y += 48) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
+  ctx.strokeStyle = 'rgba(22, 32, 43, 0.12)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([8, 10]);
+  ctx.beginPath();
+  ctx.moveTo(width / 2, 24);
+  ctx.lineTo(width / 2, height - 72);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const groundY = height * 0.82;
+  ctx.fillStyle = '#d9cfb7';
+  ctx.fillRect(0, groundY, width, height - groundY);
+  ctx.strokeStyle = '#94856b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, groundY);
+  for (let x = 0; x <= width; x += 32) {
+    const y = groundY + Math.sin(x / 47) * 3 + Math.cos(x / 79) * 2;
+    ctx.lineTo(x, y);
   }
+  ctx.stroke();
+
+  ctx.fillStyle = '#51606b';
+  ctx.font = '700 12px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('LEFT SIDE', 22, groundY - 16);
+  ctx.textAlign = 'right';
+  ctx.fillText('RIGHT SIDE', width - 22, groundY - 16);
 }
 
-function drawLinks(positions) {
-  ctx.strokeStyle = '#c8d4cd';
-  ctx.lineWidth = 1.4;
-  positions.forEach((position, index) => {
-    const next = positions[(index + 1) % positions.length];
+function drawBatteries(width, height) {
+  drawBattery(width * 0.105, height * 0.79, '#2f6f9f', 1);
+  drawBattery(width * 0.895, height * 0.79, '#c2412d', -1);
+}
+
+function drawBattery(x, y, color, direction) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = '#16202b';
+  ctx.lineWidth = 2;
+
+  roundedRectPath(-28, 10, 56, 20, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.save();
+  ctx.rotate(direction * -0.46);
+  ctx.fillRect(direction > 0 ? 0 : -46, -7, 46, 14);
+  ctx.strokeRect(direction > 0 ? 0 : -46, -7, 46, 14);
+  ctx.restore();
+
+  ctx.fillStyle = '#263544';
+  ctx.beginPath();
+  ctx.arc(-16, 32, 8, 0, Math.PI * 2);
+  ctx.arc(16, 32, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawProjectilePaths(width, height) {
+  simulation.projectiles.forEach(projectile => {
+    const side = sides[projectile.sideKey];
+    ctx.save();
+    ctx.strokeStyle = side.color;
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 9]);
     ctx.beginPath();
-    ctx.moveTo(position.x, position.y);
-    ctx.lineTo(next.x, next.y);
+    for (let index = 0; index <= 30; index += 1) {
+      const point = projectilePoint(projectile, index / 30, width, height);
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    }
     ctx.stroke();
+    ctx.restore();
   });
 }
 
-function drawPulses(positions) {
-  pulses.forEach(pulse => {
-    const from = positions[pulse.from];
-    const to = positions[pulse.to];
-    const alpha = clamp(pulse.life, 0, 1);
-    const color = pulse.kind === 'shock' ? '194, 65, 45' : '201, 134, 20';
+function drawProjectiles(width, height) {
+  simulation.projectiles.forEach(projectile => {
+    const progress = clamp(
+      (simulation.time - projectile.launchTime) / (projectile.impactTime - projectile.launchTime),
+      0,
+      1
+    );
+    const point = projectilePoint(projectile, progress, width, height);
+    const side = sides[projectile.sideKey];
+
+    ctx.save();
+    ctx.fillStyle = side.dark;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = side.color;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawExplosions(width, height) {
+  simulation.explosions.forEach(explosion => {
+    const side = sides[explosion.sideKey];
+    const age = simulation.time - explosion.startTime;
+    const progress = clamp(age / explosion.duration, 0, 1);
+    const center = toCanvas({ x: explosion.x, y: explosion.y }, width, height);
+    const radius = (12 + explosion.size * 0.58) * (0.38 + progress * 0.9);
+    const alpha = 1 - progress;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = `rgba(${color}, ${0.28 + alpha * 0.55})`;
-    ctx.lineWidth = 3 + pulse.intensity * 16;
-    ctx.lineCap = 'round';
+    const gradient = ctx.createRadialGradient(center.x, center.y, 1, center.x, center.y, radius);
+    gradient.addColorStop(0, '#fff7d6');
+    gradient.addColorStop(0.34, '#f2c14e');
+    gradient.addColorStop(0.72, side.color);
+    gradient.addColorStop(1, 'rgba(22, 32, 43, 0)');
+    ctx.fillStyle = gradient;
     ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.fill();
 
-    if (pulse.from === pulse.to) {
-      ctx.arc(from.x, from.y, 20 + pulse.intensity * 45 * (1 - alpha), 0, Math.PI * 2);
-    } else {
-      const midX = (from.x + to.x) / 2;
-      const midY = (from.y + to.y) / 2;
-      const bendX = midX + (midX - canvas.width / ((window.devicePixelRatio || 1) * 2)) * 0.08;
-      const bendY = midY + (midY - canvas.height / ((window.devicePixelRatio || 1) * 2)) * 0.08;
-      ctx.moveTo(from.x, from.y);
-      ctx.quadraticCurveTo(bendX, bendY, to.x, to.y);
-    }
-
+    ctx.strokeStyle = side.dark;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius * 0.58, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    pulse.life *= 0.86;
-  });
-
-  pulses = pulses.filter(pulse => pulse.life > 0.04);
-}
-
-function drawAgents(positions) {
-  positions.forEach(position => {
-    const radius = 8 + position.grievance * 12;
-    ctx.beginPath();
-    ctx.fillStyle = colorForGrievance(position.grievance);
-    ctx.strokeStyle = position.grievance > threshold ? '#7c2d12' : '#5d7565';
-    ctx.lineWidth = 1.4;
-    ctx.arc(position.x, position.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
   });
 }
 
-function drawCenterGauge(width, height) {
-  const chartHeight = 118;
-  const centerX = width / 2;
-  const centerY = (height - chartHeight) / 2 + 4;
-  const { containment, status } = state.metrics;
-
-  ctx.save();
-  ctx.fillStyle = '#20354a';
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, 56, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '800 24px system-ui, sans-serif';
-  ctx.fillText(String(containment), centerX, centerY - 8);
-  ctx.font = '700 12px system-ui, sans-serif';
-  ctx.fillText(status.toUpperCase(), centerX, centerY + 18);
-  ctx.restore();
-}
-
-function drawHistory(width, height) {
-  const left = 24;
-  const right = width - 24;
-  const bottom = height - 22;
-  const top = height - 112;
+function drawTimeline(width, height) {
+  const left = 22;
+  const right = width - 22;
+  const top = height - 54;
+  const bottom = height - 20;
   const span = right - left;
-  const count = Math.max(2, history.length);
 
   ctx.save();
-  ctx.fillStyle = 'rgba(244, 247, 243, 0.86)';
-  ctx.strokeStyle = '#c8d4cd';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
+  ctx.strokeStyle = 'rgba(22, 32, 43, 0.14)';
   ctx.lineWidth = 1;
-  roundRect(left, top - 12, span, 104, 8);
+  roundedRectPath(left, top, span, bottom - top, 8);
   ctx.fill();
   ctx.stroke();
 
-  drawHistoryLine('mean', '#c2412d', left, right, top, bottom, count);
-  drawHistoryLine('active', '#2f6f9f', left, right, top, bottom, count);
+  const windowSeconds = 20;
+  sideKeys.forEach(sideKey => {
+    const side = sides[sideKey];
+    const y = sideKey === 'left' ? top + 10 : top + 24;
+    ctx.strokeStyle = side.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(left + 12, y);
+    ctx.lineTo(right - 12, y);
+    ctx.stroke();
 
-  ctx.fillStyle = '#5e6972';
-  ctx.font = '700 12px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('mean grievance', left + 10, top + 4);
-  ctx.fillStyle = '#2f6f9f';
-  ctx.fillText('active share', left + 122, top + 4);
+    simulation.events.forEach(eventText => {
+      if (!eventText.includes(side.label)) return;
+      const parsed = eventText.match(/^(\d\d):(\d\d)\.(\d)/);
+      if (!parsed) return;
+      const eventTime = Number(parsed[1]) * 60 + Number(parsed[2]) + Number(parsed[3]) / 10;
+      const age = simulation.time - eventTime;
+      if (age < 0 || age > windowSeconds) return;
+      const x = right - 14 - (age / windowSeconds) * (span - 28);
+      ctx.fillStyle = side.color;
+      ctx.beginPath();
+      ctx.arc(x, y, eventText.includes('impact') ? 4.5 : 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
   ctx.restore();
 }
 
-function drawHistoryLine(key, color, left, right, top, bottom, count) {
-  if (history.length < 2) return;
-
+function roundedRectPath(x, y, width, height, radius) {
+  const corner = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
-  history.forEach((sample, index) => {
-    const x = left + (index / (count - 1)) * (right - left);
-    const y = bottom - clamp(sample[key], 0, 1) * (bottom - top);
-    if (index === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  });
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2.4;
-  ctx.stroke();
-}
-
-function roundRect(x, y, width, height, radius) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + width, y, x + width, y + height, radius);
-  ctx.arcTo(x + width, y + height, x, y + height, radius);
-  ctx.arcTo(x, y + height, x, y, radius);
-  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.moveTo(x + corner, y);
+  ctx.arcTo(x + width, y, x + width, y + height, corner);
+  ctx.arcTo(x + width, y + height, x, y + height, corner);
+  ctx.arcTo(x, y + height, x, y, corner);
+  ctx.arcTo(x, y, x + width, y, corner);
   ctx.closePath();
 }
 
 function animate(timestamp) {
-  if (running && timestamp - lastAdvance > 110) {
-    simulateStep();
-    lastAdvance = timestamp;
+  if (simulation.lastTimestamp === null) {
+    simulation.lastTimestamp = timestamp;
+  }
+
+  const deltaSeconds = Math.min((timestamp - simulation.lastTimestamp) / 1000, 0.12);
+  simulation.lastTimestamp = timestamp;
+
+  if (simulation.running) {
+    advanceSimulation(deltaSeconds);
   }
 
   draw();
@@ -454,34 +535,24 @@ function animate(timestamp) {
 }
 
 function toggleRunning() {
-  running = !running;
+  simulation.running = !simulation.running;
+  simulation.lastTimestamp = null;
   updateInterface();
 }
 
-function handlePopulationChange() {
-  updateSliderLabels();
-  resetSimulation();
-}
-
-function handleParameterChange() {
-  updateSliderLabels();
-  updateInterface();
-}
+document.querySelectorAll('[data-side][data-field]').forEach(button => {
+  button.addEventListener('click', () => {
+    const sideKey = button.dataset.side;
+    const field = button.dataset.field;
+    const direction = Number(button.dataset.delta);
+    adjustParameter(sideKey, field, direction);
+  });
+});
 
 elements.playButton.addEventListener('click', toggleRunning);
-elements.stepButton.addEventListener('click', () => {
-  running = false;
-  simulateStep();
-  draw();
-});
 elements.resetButton.addEventListener('click', resetSimulation);
-elements.populationSlider.addEventListener('input', handlePopulationChange);
-elements.retaliationSlider.addEventListener('input', handleParameterChange);
-elements.repairSlider.addEventListener('input', handleParameterChange);
-elements.provocationSlider.addEventListener('input', handleParameterChange);
 window.addEventListener('resize', draw);
 
-updateSliderLabels();
 resetSimulation();
 requestAnimationFrame(animate);
 

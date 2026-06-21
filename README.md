@@ -1,8 +1,8 @@
 # Retaliation Simulation
 
-A dependency-free static web simulation scaffold for exploring retaliation,
-repair, and escalation dynamics. It is intended for publication directly with
-GitHub Pages.
+A dependency-free static web game for assessing perception of conflict
+dynamics through a stylized artillery exchange. It is intended for publication
+directly with GitHub Pages.
 
 Live app:
 
@@ -10,10 +10,12 @@ Live app:
 https://gregconradismith.github.io/retaliation-simulation/
 ```
 
-The current browser model is a provisional toy model: agents sit on a ring,
-external provocations raise grievances, retaliatory responses transmit
-grievance to neighbors, and repair damps the system. It is a working shell for
-future development, not a claim about real social dynamics.
+The current browser model has two sides. Each side launches artillery across
+the canvas according to its own stochastic launch frequency. Explosion sizes
+are sampled from side-specific normal distributions with means and variances
+set by the side controls.
+
+This is a toy perception game, not a validated model of conflict escalation.
 
 ## GitHub Pages
 
