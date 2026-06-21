@@ -9,6 +9,10 @@ Current state:
 - Left and right controls for launch frequency, explosion mean, and explosion variance.
 - Launch timing uses stochastic waiting times controlled by side-specific frequency.
 - Explosion sizes are sampled from side-specific normal distributions.
+- Explore mode shows editable parameters.
+- Challenge mode hides randomized parameters for a timed round and asks which side is more aggressive.
+- Current aggression score is launch frequency times mean explosion size.
+- Round duration is user-adjustable and defaults to 30 seconds.
 - PWA manifest, service worker, and icons.
 - GitHub Pages target URL: `https://gregconradismith.github.io/retaliation-simulation/`.
 

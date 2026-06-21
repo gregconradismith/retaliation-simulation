@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21-artillery">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-rounds">
 </head>
 <body>
   <main class="app-shell">
@@ -22,7 +22,7 @@
         <h2>Left Battery</h2>
       </header>
 
-      <section class="control-card" aria-labelledby="leftRateLabel">
+      <section class="control-card parameter-card" aria-labelledby="leftRateLabel">
         <label id="leftRateLabel">Launch frequency</label>
         <div class="stepper-row">
           <button type="button" data-side="left" data-field="rate" data-delta="-1" aria-label="Decrease left launch frequency">-</button>
@@ -31,7 +31,7 @@
         </div>
       </section>
 
-      <section class="control-card" aria-labelledby="leftMeanLabel">
+      <section class="control-card parameter-card" aria-labelledby="leftMeanLabel">
         <label id="leftMeanLabel">Explosion mean</label>
         <div class="stepper-row">
           <button type="button" data-side="left" data-field="mean" data-delta="-1" aria-label="Decrease left explosion mean">-</button>
@@ -40,7 +40,7 @@
         </div>
       </section>
 
-      <section class="control-card" aria-labelledby="leftVarianceLabel">
+      <section class="control-card parameter-card" aria-labelledby="leftVarianceLabel">
         <label id="leftVarianceLabel">Explosion variance</label>
         <div class="stepper-row">
           <button type="button" data-side="left" data-field="variance" data-delta="-1" aria-label="Decrease left explosion variance">-</button>
@@ -70,6 +70,21 @@
         </div>
       </div>
 
+      <section class="mode-panel" aria-label="Mode and round settings">
+        <div class="mode-buttons" role="group" aria-label="Simulation mode">
+          <button class="mode-button is-active" id="exploreModeButton" type="button">Explore</button>
+          <button class="mode-button" id="challengeModeButton" type="button">Challenge</button>
+        </div>
+        <div class="duration-control" aria-label="Round duration">
+          <span>Round duration</span>
+          <div class="duration-stepper">
+            <button id="durationDownButton" type="button" aria-label="Decrease round duration">-</button>
+            <output id="durationValue">30 s</output>
+            <button id="durationUpButton" type="button" aria-label="Increase round duration">+</button>
+          </div>
+        </div>
+      </section>
+
       <div class="canvas-wrap">
         <canvas id="simulationCanvas" width="1200" height="720" aria-label="Artillery arcs and explosions between two sides"></canvas>
       </div>
@@ -81,6 +96,24 @@
         </div>
         <p id="eventText" aria-live="polite">Ready</p>
       </div>
+
+      <section class="decision-panel" id="decisionPanel" aria-labelledby="decisionTitle" hidden>
+        <h2 id="decisionTitle">Who is being more aggressive?</h2>
+        <div class="answer-buttons">
+          <button type="button" data-answer="left">Left</button>
+          <button type="button" data-answer="equal">About Equal</button>
+          <button type="button" data-answer="right">Right</button>
+        </div>
+      </section>
+
+      <section class="reveal-panel" id="revealPanel" aria-live="polite" hidden>
+        <div>
+          <p class="result-label" id="resultLabel">Result</p>
+          <p class="result-text" id="resultText"></p>
+          <p class="result-detail" id="resultDetail"></p>
+        </div>
+        <div class="reveal-grid" id="revealGrid"></div>
+      </section>
 
       <section class="event-panel" aria-label="Launch and impact log">
         <h2>Launch and Impact Log</h2>
@@ -98,7 +131,7 @@
         <h2>Right Battery</h2>
       </header>
 
-      <section class="control-card" aria-labelledby="rightRateLabel">
+      <section class="control-card parameter-card" aria-labelledby="rightRateLabel">
         <label id="rightRateLabel">Launch frequency</label>
         <div class="stepper-row">
           <button type="button" data-side="right" data-field="rate" data-delta="-1" aria-label="Decrease right launch frequency">-</button>
@@ -107,7 +140,7 @@
         </div>
       </section>
 
-      <section class="control-card" aria-labelledby="rightMeanLabel">
+      <section class="control-card parameter-card" aria-labelledby="rightMeanLabel">
         <label id="rightMeanLabel">Explosion mean</label>
         <div class="stepper-row">
           <button type="button" data-side="right" data-field="mean" data-delta="-1" aria-label="Decrease right explosion mean">-</button>
@@ -116,7 +149,7 @@
         </div>
       </section>
 
-      <section class="control-card" aria-labelledby="rightVarianceLabel">
+      <section class="control-card parameter-card" aria-labelledby="rightVarianceLabel">
         <label id="rightVarianceLabel">Explosion variance</label>
         <div class="stepper-row">
           <button type="button" data-side="right" data-field="variance" data-delta="-1" aria-label="Decrease right explosion variance">-</button>
@@ -134,6 +167,6 @@
     </aside>
   </main>
 
-  <script src="app.js?v=2026-06-21-artillery"></script>
+  <script src="app.js?v=2026-06-21-rounds"></script>
 </body>
 </html>

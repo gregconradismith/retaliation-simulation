@@ -11,6 +11,17 @@ const elements = {
   eventList: document.getElementById('eventList'),
   playButton: document.getElementById('playButton'),
   resetButton: document.getElementById('resetButton'),
+  exploreModeButton: document.getElementById('exploreModeButton'),
+  challengeModeButton: document.getElementById('challengeModeButton'),
+  durationDownButton: document.getElementById('durationDownButton'),
+  durationUpButton: document.getElementById('durationUpButton'),
+  durationValue: document.getElementById('durationValue'),
+  decisionPanel: document.getElementById('decisionPanel'),
+  revealPanel: document.getElementById('revealPanel'),
+  resultLabel: document.getElementById('resultLabel'),
+  resultText: document.getElementById('resultText'),
+  resultDetail: document.getElementById('resultDetail'),
+  revealGrid: document.getElementById('revealGrid'),
   leftRateValue: document.getElementById('leftRateValue'),
   leftMeanValue: document.getElementById('leftMeanValue'),
   leftVarianceValue: document.getElementById('leftVarianceValue'),
@@ -31,15 +42,22 @@ const parameterConfig = {
   rate: { min: 0, max: 30, step: 1, formatter: value => `${value} / min` },
   mean: { min: 10, max: 90, step: 5, formatter: value => `${value}` },
   variance: { min: 4, max: 400, step: 16, formatter: value => `${value}` },
+  duration: { min: 10, max: 120, step: 5 },
 };
 
+const equalityTolerance = 0.10;
 const sideKeys = ['left', 'right'];
+const defaultParameters = {
+  left: { rate: 10, mean: 42, variance: 64 },
+  right: { rate: 8, mean: 50, variance: 100 },
+};
+
 const sides = {
   left: {
     label: 'Left',
     color: '#2f6f9f',
     dark: '#174361',
-    params: { rate: 10, mean: 42, variance: 64 },
+    params: { ...defaultParameters.left },
     launches: 0,
     impacts: 0,
     totalSize: 0,
@@ -50,7 +68,7 @@ const sides = {
     label: 'Right',
     color: '#c2412d',
     dark: '#7f2419',
-    params: { rate: 8, mean: 50, variance: 100 },
+    params: { ...defaultParameters.right },
     launches: 0,
     impacts: 0,
     totalSize: 0,
@@ -60,7 +78,12 @@ const sides = {
 };
 
 const simulation = {
+  mode: 'explore',
   running: false,
+  roundComplete: false,
+  revealed: false,
+  selectedAnswer: null,
+  duration: 30,
   time: 0,
   lastTimestamp: null,
   projectiles: [],
@@ -74,6 +97,11 @@ function clamp(value, min, max) {
 
 function randomRange(min, max) {
   return min + Math.random() * (max - min);
+}
+
+function randomStep(min, max, step) {
+  const count = Math.floor((max - min) / step) + 1;
+  return min + Math.floor(Math.random() * count) * step;
 }
 
 function sampleNormal() {
@@ -102,6 +130,83 @@ function formatTime(seconds) {
   return `${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${tenths}`;
 }
 
+function expectedIntensity(sideKey) {
+  const params = sides[sideKey].params;
+  return params.rate * params.mean;
+}
+
+function observedIntensity(sideKey) {
+  const side = sides[sideKey];
+  return simulation.duration > 0
+    ? side.totalSize * 60 / simulation.duration
+    : 0;
+}
+
+function observedMean(sideKey) {
+  const side = sides[sideKey];
+  return side.impacts === 0 ? null : side.totalSize / side.impacts;
+}
+
+function trueAggressionAnswer() {
+  const left = expectedIntensity('left');
+  const right = expectedIntensity('right');
+  const scale = Math.max(left, right, 1);
+  const relativeDifference = Math.abs(left - right) / scale;
+
+  if (relativeDifference <= equalityTolerance) return 'equal';
+  return left > right ? 'left' : 'right';
+}
+
+function answerLabel(answer) {
+  if (answer === 'left') return 'Left';
+  if (answer === 'right') return 'Right';
+  return 'About equal';
+}
+
+function generateChallengeParameters() {
+  const variances = [16, 36, 64, 100, 144, 196, 256, 324];
+
+  function drawOne() {
+    return {
+      rate: randomStep(5, 22, 1),
+      mean: randomStep(25, 80, 5),
+      variance: variances[Math.floor(Math.random() * variances.length)],
+    };
+  }
+
+  if (Math.random() < 0.24) {
+    const left = drawOne();
+    const targetIntensity = left.rate * left.mean * randomRange(0.94, 1.06);
+    const rightRate = randomStep(5, 22, 1);
+    const rightMean = clamp(Math.round(targetIntensity / rightRate / 5) * 5, 25, 80);
+    return {
+      left,
+      right: {
+        rate: rightRate,
+        mean: rightMean,
+        variance: variances[Math.floor(Math.random() * variances.length)],
+      },
+    };
+  }
+
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const left = drawOne();
+    const right = drawOne();
+    const leftIntensity = left.rate * left.mean;
+    const rightIntensity = right.rate * right.mean;
+    const relativeDifference = Math.abs(leftIntensity - rightIntensity) / Math.max(leftIntensity, rightIntensity, 1);
+    if (relativeDifference >= 0.16) return { left, right };
+  }
+
+  return { left: drawOne(), right: drawOne() };
+}
+
+function applyParameters(parameterSet) {
+  sideKeys.forEach(sideKey => {
+    sides[sideKey].params = { ...parameterSet[sideKey] };
+  });
+}
+
 function scheduleNextLaunch(sideKey, fromTime, initial = false) {
   const side = sides[sideKey];
   const wait = sampleLaunchWait(side.params.rate);
@@ -122,24 +227,53 @@ function resetSideStats() {
   });
 }
 
-function resetSimulation() {
+function resetSimulation(options = {}) {
+  const randomizeChallenge = options.randomizeChallenge ?? simulation.mode === 'challenge';
+  if (simulation.mode === 'challenge' && randomizeChallenge) {
+    applyParameters(generateChallengeParameters());
+  }
+
   simulation.running = false;
+  simulation.roundComplete = false;
+  simulation.revealed = simulation.mode === 'explore';
+  simulation.selectedAnswer = null;
   simulation.time = 0;
   simulation.lastTimestamp = null;
   simulation.projectiles = [];
   simulation.explosions = [];
   simulation.events = [];
   resetSideStats();
-  addEvent(0, 'Simulation reset');
+  addEvent({ time: 0, type: 'system', text: simulation.mode === 'challenge' ? 'Challenge ready' : 'Simulation reset' });
   updateInterface();
   draw();
 }
 
-function addEvent(time, text) {
-  const stampedText = `${formatTime(time)} ${text}`;
-  simulation.events.unshift(stampedText);
-  simulation.events = simulation.events.slice(0, 8);
-  elements.eventText.textContent = stampedText;
+function addEvent(event) {
+  const storedEvent = {
+    time: event.time,
+    sideKey: event.sideKey ?? null,
+    type: event.type,
+    size: event.size ?? null,
+    text: event.text,
+  };
+  simulation.events.unshift(storedEvent);
+  simulation.events = simulation.events.slice(0, 10);
+  elements.eventText.textContent = displayEvent(storedEvent);
+}
+
+function displayEvent(event) {
+  const prefix = formatTime(event.time);
+
+  if (simulation.mode === 'challenge' && !simulation.revealed) {
+    if (event.type === 'launch') return `${prefix} launch observed`;
+    if (event.type === 'impact') return `${prefix} explosion observed`;
+    if (event.type === 'complete') return `${prefix} round complete`;
+    return `${prefix} ${event.text}`;
+  }
+
+  if (event.type === 'launch') return `${prefix} ${sides[event.sideKey].label} launch`;
+  if (event.type === 'impact') return `${prefix} ${sides[event.sideKey].label} impact, size ${Math.round(event.size)}`;
+  return `${prefix} ${event.text}`;
 }
 
 function launchProjectile(sideKey, launchTime) {
@@ -166,7 +300,7 @@ function launchProjectile(sideKey, launchTime) {
   });
 
   side.launches += 1;
-  addEvent(launchTime, `${side.label} launch`);
+  addEvent({ time: launchTime, sideKey, type: 'launch' });
 }
 
 function registerImpact(projectile) {
@@ -184,16 +318,32 @@ function registerImpact(projectile) {
     duration: 1.05 + clamp(projectile.size / 180, 0, 0.55),
   });
 
-  addEvent(projectile.impactTime, `${side.label} impact, size ${Math.round(projectile.size)}`);
+  addEvent({
+    time: projectile.impactTime,
+    sideKey: projectile.sideKey,
+    type: 'impact',
+    size: projectile.size,
+  });
+}
+
+function completeRound() {
+  simulation.running = false;
+  simulation.roundComplete = true;
+  simulation.lastTimestamp = null;
+  addEvent({ time: simulation.time, type: 'complete', text: 'Round complete' });
+  updateInterface();
 }
 
 function advanceSimulation(deltaSeconds) {
-  simulation.time += deltaSeconds;
+  if (simulation.roundComplete) return;
+
+  const nextTime = Math.min(simulation.time + deltaSeconds, simulation.duration);
+  simulation.time = nextTime;
 
   sideKeys.forEach(sideKey => {
     const side = sides[sideKey];
     let launchGuard = 0;
-    while (simulation.time >= side.nextLaunchAt && launchGuard < 12) {
+    while (side.nextLaunchAt <= simulation.time && side.nextLaunchAt <= simulation.duration && launchGuard < 12) {
       const launchTime = side.nextLaunchAt;
       launchProjectile(sideKey, launchTime);
       scheduleNextLaunch(sideKey, launchTime);
@@ -215,10 +365,16 @@ function advanceSimulation(deltaSeconds) {
     simulation.time <= explosion.startTime + explosion.duration
   ));
 
-  updateInterface();
+  if (simulation.time >= simulation.duration) {
+    completeRound();
+  } else {
+    updateInterface();
+  }
 }
 
 function adjustParameter(sideKey, field, direction) {
+  if (simulation.mode === 'challenge' && !simulation.revealed) return;
+
   const config = parameterConfig[field];
   const side = sides[sideKey];
   const nextValue = clamp(
@@ -235,34 +391,123 @@ function adjustParameter(sideKey, field, direction) {
   updateInterface();
 }
 
+function adjustDuration(direction) {
+  const config = parameterConfig.duration;
+  simulation.duration = clamp(
+    simulation.duration + direction * config.step,
+    config.min,
+    config.max
+  );
+  if (simulation.time > simulation.duration) {
+    simulation.time = simulation.duration;
+  }
+  updateInterface();
+}
+
+function setMode(mode) {
+  if (simulation.mode === mode) return;
+  simulation.mode = mode;
+  resetSimulation({ randomizeChallenge: mode === 'challenge' });
+}
+
+function chooseAnswer(answer) {
+  if (simulation.mode !== 'challenge' || !simulation.roundComplete) return;
+  simulation.selectedAnswer = answer;
+  simulation.revealed = true;
+  updateInterface();
+}
+
 function updateInterface() {
-  elements.timeLabel.textContent = formatTime(simulation.time);
+  const hidden = simulation.mode === 'challenge' && !simulation.revealed;
+  const totalImpacts = sides.left.impacts + sides.right.impacts;
+
+  document.body.dataset.mode = simulation.mode;
+  document.body.classList.toggle('values-hidden', hidden);
+  document.body.classList.toggle('round-complete', simulation.roundComplete);
+
+  elements.timeLabel.textContent = `${formatTime(simulation.time)} / ${simulation.duration}s`;
   elements.inFlightLabel.textContent = `In flight ${simulation.projectiles.length}`;
-  elements.impactLabel.textContent = `Impacts ${sides.left.impacts + sides.right.impacts}`;
-  elements.playButton.textContent = simulation.running ? 'Pause' : 'Run';
+  elements.impactLabel.textContent = `Impacts ${totalImpacts}`;
+  elements.durationValue.textContent = `${simulation.duration} s`;
+  elements.playButton.textContent = simulation.roundComplete
+    ? 'New Round'
+    : simulation.running ? 'Pause' : 'Run';
+  elements.resetButton.textContent = simulation.mode === 'challenge' ? 'New Round' : 'Reset';
   elements.playButton.classList.toggle('is-running', simulation.running);
+  elements.exploreModeButton.classList.toggle('is-active', simulation.mode === 'explore');
+  elements.challengeModeButton.classList.toggle('is-active', simulation.mode === 'challenge');
+  elements.eventText.textContent = simulation.events.length ? displayEvent(simulation.events[0]) : 'Ready';
+
+  document.querySelectorAll('[data-side][data-field]').forEach(button => {
+    button.disabled = hidden;
+  });
 
   sideKeys.forEach(sideKey => {
     const side = sides[sideKey];
     const prefix = sideKey === 'left' ? 'left' : 'right';
-    elements[`${prefix}RateValue`].textContent = parameterConfig.rate.formatter(side.params.rate);
-    elements[`${prefix}MeanValue`].textContent = parameterConfig.mean.formatter(side.params.mean);
-    elements[`${prefix}VarianceValue`].textContent = parameterConfig.variance.formatter(side.params.variance);
-    elements[`${prefix}LaunchesValue`].textContent = String(side.launches);
-    elements[`${prefix}ImpactsValue`].textContent = String(side.impacts);
-    elements[`${prefix}LastSizeValue`].textContent = side.lastSize === null
+    elements[`${prefix}RateValue`].textContent = hidden ? 'Hidden' : parameterConfig.rate.formatter(side.params.rate);
+    elements[`${prefix}MeanValue`].textContent = hidden ? 'Hidden' : parameterConfig.mean.formatter(side.params.mean);
+    elements[`${prefix}VarianceValue`].textContent = hidden ? 'Hidden' : parameterConfig.variance.formatter(side.params.variance);
+    elements[`${prefix}LaunchesValue`].textContent = hidden ? '-' : String(side.launches);
+    elements[`${prefix}ImpactsValue`].textContent = hidden ? '-' : String(side.impacts);
+    elements[`${prefix}LastSizeValue`].textContent = hidden || side.lastSize === null
       ? '-'
       : String(Math.round(side.lastSize));
-    elements[`${prefix}MeanSizeValue`].textContent = side.impacts === 0
+    elements[`${prefix}MeanSizeValue`].textContent = hidden || side.impacts === 0
       ? '-'
       : String(Math.round(side.totalSize / side.impacts));
   });
 
-  elements.eventList.replaceChildren(...simulation.events.map(eventText => {
+  const showDecision = simulation.mode === 'challenge' && simulation.roundComplete && !simulation.revealed;
+  elements.decisionPanel.hidden = !showDecision;
+  elements.revealPanel.hidden = !(simulation.mode === 'challenge' && simulation.revealed);
+  updateRevealPanel();
+
+  elements.eventList.replaceChildren(...simulation.events.map(event => {
     const item = document.createElement('li');
-    item.textContent = eventText;
+    item.textContent = displayEvent(event);
     return item;
   }));
+}
+
+function revealRow(label, left, right) {
+  return `
+    <div class="reveal-row">
+      <span>${label}</span>
+      <strong>${left}</strong>
+      <strong>${right}</strong>
+    </div>
+  `;
+}
+
+function updateRevealPanel() {
+  if (simulation.mode !== 'challenge' || !simulation.revealed) return;
+
+  const correctAnswer = trueAggressionAnswer();
+  const correct = simulation.selectedAnswer === correctAnswer;
+  const leftExpected = expectedIntensity('left');
+  const rightExpected = expectedIntensity('right');
+  const leftObservedMean = observedMean('left');
+  const rightObservedMean = observedMean('right');
+
+  elements.resultLabel.textContent = correct ? 'Correct' : 'Not quite';
+  elements.resultText.textContent = correctAnswer === 'equal'
+    ? 'The sides were about equal'
+    : `${answerLabel(correctAnswer)} was more aggressive`;
+  elements.resultDetail.textContent = `Aggression is scored as launch frequency x mean explosion size. You chose ${answerLabel(simulation.selectedAnswer)}.`;
+  elements.revealPanel.classList.toggle('is-correct', correct);
+  elements.revealPanel.classList.toggle('is-incorrect', !correct);
+  elements.revealGrid.innerHTML = `
+    <div class="reveal-row reveal-head"><span>Measure</span><strong>Left</strong><strong>Right</strong></div>
+    ${revealRow('Launch frequency', parameterConfig.rate.formatter(sides.left.params.rate), parameterConfig.rate.formatter(sides.right.params.rate))}
+    ${revealRow('Explosion mean', Math.round(sides.left.params.mean), Math.round(sides.right.params.mean))}
+    ${revealRow('Explosion variance', Math.round(sides.left.params.variance), Math.round(sides.right.params.variance))}
+    ${revealRow('Expected intensity/min', Math.round(leftExpected), Math.round(rightExpected))}
+    ${revealRow('Observed launches', sides.left.launches, sides.right.launches)}
+    ${revealRow('Observed impacts', sides.left.impacts, sides.right.impacts)}
+    ${revealRow('Observed mean size', leftObservedMean === null ? '-' : Math.round(leftObservedMean), rightObservedMean === null ? '-' : Math.round(rightObservedMean))}
+    ${revealRow('Observed intensity/min', Math.round(observedIntensity('left')), Math.round(observedIntensity('right')))}
+  `;
 }
 
 function resizeCanvas() {
@@ -357,8 +602,8 @@ function drawBattlefield(width, height) {
 }
 
 function drawBatteries(width, height) {
-  drawBattery(width * 0.105, height * 0.79, '#2f6f9f', 1);
-  drawBattery(width * 0.895, height * 0.79, '#c2412d', -1);
+  drawBattery(width * 0.105, height * 0.79, sides.left.color, 1);
+  drawBattery(width * 0.895, height * 0.79, sides.right.color, -1);
 }
 
 function drawBattery(x, y, color, direction) {
@@ -490,17 +735,14 @@ function drawTimeline(width, height) {
     ctx.lineTo(right - 12, y);
     ctx.stroke();
 
-    simulation.events.forEach(eventText => {
-      if (!eventText.includes(side.label)) return;
-      const parsed = eventText.match(/^(\d\d):(\d\d)\.(\d)/);
-      if (!parsed) return;
-      const eventTime = Number(parsed[1]) * 60 + Number(parsed[2]) + Number(parsed[3]) / 10;
-      const age = simulation.time - eventTime;
+    simulation.events.forEach(event => {
+      if (event.sideKey !== sideKey) return;
+      const age = simulation.time - event.time;
       if (age < 0 || age > windowSeconds) return;
       const x = right - 14 - (age / windowSeconds) * (span - 28);
       ctx.fillStyle = side.color;
       ctx.beginPath();
-      ctx.arc(x, y, eventText.includes('impact') ? 4.5 : 3, 0, Math.PI * 2);
+      ctx.arc(x, y, event.type === 'impact' ? 4.5 : 3, 0, Math.PI * 2);
       ctx.fill();
     });
   });
@@ -535,7 +777,12 @@ function animate(timestamp) {
 }
 
 function toggleRunning() {
-  simulation.running = !simulation.running;
+  if (simulation.roundComplete) {
+    resetSimulation({ randomizeChallenge: simulation.mode === 'challenge' });
+    simulation.running = true;
+  } else {
+    simulation.running = !simulation.running;
+  }
   simulation.lastTimestamp = null;
   updateInterface();
 }
@@ -549,11 +796,19 @@ document.querySelectorAll('[data-side][data-field]').forEach(button => {
   });
 });
 
+document.querySelectorAll('[data-answer]').forEach(button => {
+  button.addEventListener('click', () => chooseAnswer(button.dataset.answer));
+});
+
 elements.playButton.addEventListener('click', toggleRunning);
-elements.resetButton.addEventListener('click', resetSimulation);
+elements.resetButton.addEventListener('click', () => resetSimulation({ randomizeChallenge: simulation.mode === 'challenge' }));
+elements.exploreModeButton.addEventListener('click', () => setMode('explore'));
+elements.challengeModeButton.addEventListener('click', () => setMode('challenge'));
+elements.durationDownButton.addEventListener('click', () => adjustDuration(-1));
+elements.durationUpButton.addEventListener('click', () => adjustDuration(1));
 window.addEventListener('resize', draw);
 
-resetSimulation();
+resetSimulation({ randomizeChallenge: false });
 requestAnimationFrame(animate);
 
 if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {

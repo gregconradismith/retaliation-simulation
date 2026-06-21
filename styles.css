@@ -25,6 +25,7 @@ body {
   color: var(--ink);
   background:
     linear-gradient(135deg, #f7f9f2 0%, #edf6f1 43%, #fff3e0 100%);
+  overflow-x: hidden;
 }
 
 button,
@@ -53,6 +54,12 @@ button:focus-visible,
 a:focus-visible {
   outline: 3px solid rgba(47, 111, 159, 0.28);
   outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.58;
+  transform: none;
 }
 
 .app-shell {
@@ -145,6 +152,57 @@ h2 {
   font-weight: 720;
 }
 
+.mode-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: #fbfcfb;
+}
+
+.mode-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.mode-button {
+  font-weight: 800;
+}
+
+.mode-button.is-active {
+  border-color: var(--green);
+  color: #ffffff;
+  background: var(--green);
+}
+
+.duration-control {
+  display: grid;
+  grid-template-columns: auto minmax(154px, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.duration-stepper {
+  display: grid;
+  grid-template-columns: 42px minmax(70px, 1fr) 42px;
+  gap: 8px;
+  align-items: center;
+}
+
+.duration-stepper button {
+  min-width: 42px;
+  padding: 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
 .canvas-wrap {
   min-height: 0;
   padding: 12px 14px 6px;
@@ -153,6 +211,8 @@ h2 {
 canvas {
   display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   aspect-ratio: 5 / 3;
   max-height: calc(100vh - 278px);
   border: 1px solid var(--line);
@@ -191,6 +251,108 @@ canvas {
   color: var(--muted);
   font-weight: 700;
   text-align: right;
+}
+
+.decision-panel,
+.reveal-panel {
+  margin: 0 20px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 14px;
+}
+
+.decision-panel h2 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.answer-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.answer-buttons button {
+  font-weight: 850;
+}
+
+.reveal-panel {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.reveal-panel[hidden],
+.decision-panel[hidden] {
+  display: none;
+}
+
+.reveal-panel.is-correct {
+  border-color: rgba(33, 122, 105, 0.36);
+  background: linear-gradient(90deg, rgba(33, 122, 105, 0.12), #fbfcfb 72%);
+}
+
+.reveal-panel.is-incorrect {
+  border-color: rgba(194, 65, 45, 0.32);
+  background: linear-gradient(90deg, rgba(194, 65, 45, 0.11), #fbfcfb 72%);
+}
+
+.result-label {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.result-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.42rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.result-detail {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.reveal-grid {
+  display: grid;
+  gap: 5px;
+}
+
+.reveal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(64px, 0.7fr) minmax(64px, 0.7fr);
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.reveal-row span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+}
+
+.reveal-row strong {
+  text-align: right;
+}
+
+.reveal-head {
+  background: #f2f6f4;
 }
 
 .faction-header {
@@ -245,6 +407,11 @@ output {
   background: #ffffff;
   text-align: center;
   font-weight: 850;
+}
+
+.values-hidden .parameter-card output {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .side-stats {
@@ -401,7 +568,10 @@ output {
   }
 
   .app-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .play-area,
@@ -409,9 +579,12 @@ output {
   .right-panel {
     grid-column: 1;
     grid-row: auto;
+    width: 100%;
+    max-width: 100%;
   }
 
   .top-bar,
+  .mode-panel,
   .command-row {
     align-items: stretch;
     flex-direction: column;
@@ -428,6 +601,24 @@ output {
 
   #eventText {
     text-align: left;
+  }
+
+  .duration-control,
+  .reveal-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .answer-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas-wrap,
+  .control-card,
+  .side-stats,
+  .event-panel,
+  .reading-nav {
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .event-panel ol {

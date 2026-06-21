@@ -15,6 +15,11 @@ the canvas according to its own stochastic launch frequency. Explosion sizes
 are sampled from side-specific normal distributions with means and variances
 set by the side controls.
 
+Explore mode exposes those parameters directly. Challenge mode hides randomly
+chosen parameters for a timed round, asks which side is more aggressive, and
+then reveals the parameters plus expected and observed summary statistics.
+Aggression is currently scored as launch frequency times mean explosion size.
+
 This is a toy perception game, not a validated model of conflict escalation.
 
 ## GitHub Pages

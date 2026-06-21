@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21-artillery">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-rounds">
 </head>
 <body>
   <main class="reading-shell">
@@ -40,12 +40,22 @@
       </section>
 
       <section>
+        <h2>Aggression score</h2>
+        <p>
+          In the current non-reactive model, the ground-truth aggression score
+          is launch frequency times mean explosion size. Challenge mode reveals
+          this expected intensity along with finite-round observed statistics,
+          which can differ because launch timing and explosion sizes are random.
+        </p>
+      </section>
+
+      <section>
         <h2>Current limitations</h2>
         <ul class="resource-list">
           <li>The two sides do not yet react strategically to one another.</li>
           <li>Launch rate and explosion size are independent within each side.</li>
           <li>The visual target positions are cosmetic and do not accumulate damage.</li>
-          <li>No player objective or scoring rule has been defined yet.</li>
+          <li>Retaliatory coupling after being hit has not been added yet.</li>
         </ul>
       </section>
 

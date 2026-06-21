@@ -10,14 +10,20 @@ stylized artillery exchange between two sides. Preserve the central behavior:
 each side launches across the canvas, launch timing is controlled by that
 side's frequency, and explosion sizes are sampled from side-specific normal
 distributions with configurable mean and variance. Keep controls for the left
-side on the left and controls for the right side on the right.
+side on the left and controls for the right side on the right. Preserve the two
+modes: Explore mode with visible editable parameters, and Challenge mode with
+hidden randomized parameters, a timed round, player judgment of which side is
+more aggressive, and a reveal of parameters plus expected and observed summary
+statistics. In the current non-reactive model, aggression is defined as launch
+frequency times mean explosion size.
 
 Important files:
 
 - `index.html` is the app shell and includes PWA/iPhone metadata.
 - `styles.css` contains responsive styling.
-- `app.js` contains stochastic launch timing, normal explosion-size sampling,
-  canvas drawing, controls, event logging, and service-worker registration.
+- `app.js` contains mode state, stochastic launch timing, normal explosion-size
+  sampling, canvas drawing, controls, event logging, round scoring/reveal, and
+  service-worker registration.
 - `manifest.webmanifest` defines installable app metadata.
 - `service-worker.js` caches the app shell for offline/PWA behavior.
 - `icons/` contains app icons.
@@ -45,8 +51,10 @@ python3 -m http.server 8765
 ```
 
 Then open `http://127.0.0.1:8765/` and verify artillery arcs render, explosions
-appear at impact, left and right controls affect their respective sides, event
-logs update, and desktop plus mobile-width layouts are usable.
+appear at impact, left and right controls affect their respective sides in
+Explore mode, Challenge mode hides parameters before reveal, decision buttons
+reveal the correct answer and statistics, event logs update, and desktop plus
+mobile-width layouts are usable.
 
 Do not commit local noise such as `.DS_Store`, editor files, or generated
 temporary artifacts.
