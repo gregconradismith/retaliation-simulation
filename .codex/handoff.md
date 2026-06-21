@@ -10,6 +10,8 @@ Current state:
 - Artillery exchange simulation with two sides.
 - Left and right controls for launch frequency, explosion mean, and explosion variance.
 - Launch timing uses stochastic waiting times controlled by side-specific frequency.
+- Projectiles launch from the visible gun muzzle using shared battery geometry.
+- Vertical timeline shows launch ticks and impact circles scaled by explosion size.
 - Explosion sizes are sampled from side-specific normal distributions.
 - Explore mode shows editable parameters.
 - Challenge mode hides randomized parameters for a timed round and asks which side is more aggressive.
@@ -34,3 +36,10 @@ Pre-edit Git state after fetch:
 ```bash
 ## main...origin/main
 ```
+
+## 2026-06-21 Update
+
+- Fixed projectile start points so artillery originates at the visible barrel tip instead of randomized positions around the tank.
+- Added horizontal launch tick marks to the vertical timeline while preserving filled impact circles scaled by explosion size.
+- Bumped the service-worker cache name and app.js cache-busting query for the app-shell change.
+- Verified with `node --check app.js`, `node --check service-worker.js`, `git diff --check`, and local browser previews at desktop and mobile width.

@@ -60,6 +60,11 @@ const timingLabels = {
   random: 'Random',
   bursty: 'Bursty',
 };
+const battlefieldGeometry = {
+  leftBattery: { x: 0.12, y: 0.79 },
+  rightBattery: { x: 0.88, y: 0.79 },
+  muzzleLength: { x: 94 / 1200, y: 94 / 720 },
+};
 const defaultParameters = {
   left: { rate: 10, mean: 42, variance: 64, timing: 'random' },
   right: { rate: 8, mean: 50, variance: 100, timing: 'random' },
@@ -104,6 +109,7 @@ const simulation = {
   projectiles: [],
   explosions: [],
   events: [],
+  timelineEvents: [],
   trialHistory: [],
   trialCounter: 0,
 };
@@ -345,6 +351,7 @@ function resetSimulation(options = {}) {
   simulation.projectiles = [];
   simulation.explosions = [];
   simulation.events = [];
+  simulation.timelineEvents = [];
   resetSideStats();
   addEvent({ time: 0, type: 'system', text: simulation.mode === 'challenge' ? 'Challenge ready' : 'Simulation reset' });
   updateInterface();
@@ -361,6 +368,10 @@ function addEvent(event) {
   };
   simulation.events.unshift(storedEvent);
   simulation.events = simulation.events.slice(0, 10);
+  if (storedEvent.sideKey !== null && (storedEvent.type === 'launch' || storedEvent.type === 'impact')) {
+    simulation.timelineEvents.unshift(storedEvent);
+    simulation.timelineEvents = simulation.timelineEvents.slice(0, 240);
+  }
   elements.eventText.textContent = displayEvent(storedEvent);
 }
 
@@ -385,30 +396,49 @@ function launchArcAngle(projectile) {
   return Math.atan2((controlY - projectile.startY) * 3, (controlX - projectile.startX) * 5);
 }
 
+function batteryPivot(sideKey) {
+  return sideKey === 'left'
+    ? battlefieldGeometry.leftBattery
+    : battlefieldGeometry.rightBattery;
+}
+
+function muzzlePoint(sideKey, angle) {
+  const pivot = batteryPivot(sideKey);
+  return {
+    x: pivot.x + Math.cos(angle) * battlefieldGeometry.muzzleLength.x,
+    y: pivot.y + Math.sin(angle) * battlefieldGeometry.muzzleLength.y,
+  };
+}
+
 function launchProjectile(sideKey, launchTime) {
   const side = sides[sideKey];
   const fromLeft = sideKey === 'left';
   const size = sampleExplosionSize(side);
   const duration = randomRange(1.15, 1.85) + clamp(size / 240, 0, 0.35);
-  const startX = fromLeft ? randomRange(0.075, 0.14) : randomRange(0.86, 0.925);
   const targetX = fromLeft ? randomRange(0.58, 0.94) : randomRange(0.06, 0.42);
-  const startY = randomRange(0.70, 0.80);
   const targetY = randomRange(0.73, 0.83);
-  const distance = Math.abs(targetX - startX);
+  const pivot = batteryPivot(sideKey);
+  const distance = Math.abs(targetX - pivot.x);
   const apexY = clamp(
     randomRange(0.10, 0.36) - clamp(size / 850, 0, 0.10) - clamp(distance - 0.52, 0, 0.08),
     0.05,
     0.36
   );
-  const launchAngle = launchArcAngle({ startX, startY, targetX, apexY });
+  let start = pivot;
+  let launchAngle = launchArcAngle({ startX: start.x, startY: start.y, targetX, apexY });
+  for (let index = 0; index < 3; index += 1) {
+    start = muzzlePoint(sideKey, launchAngle);
+    launchAngle = launchArcAngle({ startX: start.x, startY: start.y, targetX, apexY });
+  }
+  start = muzzlePoint(sideKey, launchAngle);
 
   simulation.projectiles.push({
     sideKey,
     size,
     launchTime,
     impactTime: launchTime + duration,
-    startX,
-    startY,
+    startX: start.x,
+    startY: start.y,
     targetX,
     targetY,
     apexY,
@@ -776,8 +806,8 @@ function drawBattlefield(width, height) {
 }
 
 function drawBatteries(width, height) {
-  drawBattery(width * 0.12, height * 0.79, sides.left.color, 1, sides.left.barrelAngle ?? -0.36);
-  drawBattery(width * 0.88, height * 0.79, sides.right.color, -1, sides.right.barrelAngle ?? -Math.PI + 0.36);
+  drawBattery(width * battlefieldGeometry.leftBattery.x, height * battlefieldGeometry.leftBattery.y, sides.left.color, 1, sides.left.barrelAngle ?? -0.36);
+  drawBattery(width * battlefieldGeometry.rightBattery.x, height * battlefieldGeometry.rightBattery.y, sides.right.color, -1, sides.right.barrelAngle ?? -Math.PI + 0.36);
 }
 
 function normalizeAngle(angle) {
@@ -996,16 +1026,25 @@ function drawTimeline(width, height) {
     ctx.lineTo(x, top);
     ctx.stroke();
 
-    simulation.events.forEach(event => {
-      if (event.sideKey !== sideKey || event.type !== 'impact') return;
+    simulation.timelineEvents.forEach(event => {
+      if (event.sideKey !== sideKey) return;
       const age = simulation.time - event.time;
       if (age < 0 || age > windowSeconds) return;
       const y = bottom - (age / windowSeconds) * span;
-      const radius = clamp(2.8 + Math.sqrt(event.size ?? 0) * 0.28, 4, 8.5);
-      ctx.fillStyle = side.color;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
+      if (event.type === 'launch') {
+        ctx.strokeStyle = side.dark;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y);
+        ctx.lineTo(x + 8, y);
+        ctx.stroke();
+      } else if (event.type === 'impact') {
+        const radius = clamp(2.8 + Math.sqrt(event.size ?? 0) * 0.28, 4, 8.5);
+        ctx.fillStyle = side.color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
   });
   ctx.restore();
