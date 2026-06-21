@@ -43,3 +43,11 @@ Pre-edit Git state after fetch:
 - Added horizontal launch tick marks to the vertical timeline while preserving filled impact circles scaled by explosion size.
 - Bumped the service-worker cache name and app.js cache-busting query for the app-shell change.
 - Verified with `node --check app.js`, `node --check service-worker.js`, `git diff --check`, and local browser previews at desktop and mobile width.
+
+## 2026-06-21 Visual Marker Update
+
+- Made timeline launch ticks shorter and thinner.
+- Enlarged timeline impact circles and increased their nonlinear scaling with explosion size.
+- Moved Blue and Red battlefield labels to the upper left and right corners of the canvas.
+- Removed the translucent field drawn around in-flight projectiles.
+- Bumped the service-worker cache name and app.js cache-busting query.

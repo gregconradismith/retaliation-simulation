@@ -797,12 +797,13 @@ function drawBattlefield(width, height) {
   }
   ctx.stroke();
 
-  ctx.fillStyle = '#51606b';
-  ctx.font = '700 12px system-ui, sans-serif';
+  ctx.fillStyle = sides.left.dark;
+  ctx.font = '800 13px system-ui, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('BLUE', 22, groundY - 16);
+  ctx.fillText('BLUE', 22, 30);
+  ctx.fillStyle = sides.right.dark;
   ctx.textAlign = 'right';
-  ctx.fillText('RED', width - 22, groundY - 16);
+  ctx.fillText('RED', width - 22, 30);
 }
 
 function drawBatteries(width, height) {
@@ -956,12 +957,6 @@ function drawProjectiles(width, height) {
     ctx.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-
-    ctx.globalAlpha = 0.32;
-    ctx.fillStyle = side.color;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 13, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
   });
 }
@@ -1033,13 +1028,13 @@ function drawTimeline(width, height) {
       const y = bottom - (age / windowSeconds) * span;
       if (event.type === 'launch') {
         ctx.strokeStyle = side.dark;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.moveTo(x - 8, y);
-        ctx.lineTo(x + 8, y);
+        ctx.moveTo(x - 5.5, y);
+        ctx.lineTo(x + 5.5, y);
         ctx.stroke();
       } else if (event.type === 'impact') {
-        const radius = clamp(2.8 + Math.sqrt(event.size ?? 0) * 0.28, 4, 8.5);
+        const radius = clamp(2.4 + Math.pow(event.size ?? 0, 0.72) * 0.42, 5, 14);
         ctx.fillStyle = side.color;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
