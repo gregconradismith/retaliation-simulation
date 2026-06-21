@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21-ticker">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-history">
 </head>
 <body>
   <main class="app-shell">
@@ -119,6 +119,18 @@
         <div class="reveal-grid" id="revealGrid"></div>
       </section>
 
+      <section class="history-panel" id="historyPanel" aria-labelledby="historyTitle" hidden>
+        <div class="history-header">
+          <h2 id="historyTitle">Challenge History</h2>
+          <div class="history-score" aria-label="Challenge score">
+            <p><span>Trials</span><strong id="trialCountValue">0</strong></p>
+            <p><span>Correct</span><strong id="correctCountValue">0</strong></p>
+            <p><span>Accuracy</span><strong id="accuracyValue">-</strong></p>
+          </div>
+        </div>
+        <ol id="historyList"></ol>
+      </section>
+
       <section class="event-panel" aria-label="Launch and impact log">
         <h2>Launch and Impact Log</h2>
         <ol id="eventList"></ol>
@@ -171,6 +183,6 @@
     </aside>
   </main>
 
-  <script src="app.js?v=2026-06-21-modern"></script>
+  <script src="app.js?v=2026-06-21-history"></script>
 </body>
 </html>

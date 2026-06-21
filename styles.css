@@ -307,7 +307,8 @@ canvas {
 }
 
 .decision-panel,
-.reveal-panel {
+.reveal-panel,
+.history-panel {
   margin: 0 20px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -340,7 +341,8 @@ canvas {
 }
 
 .reveal-panel[hidden],
-.decision-panel[hidden] {
+.decision-panel[hidden],
+.history-panel[hidden] {
   display: none;
 }
 
@@ -404,8 +406,103 @@ canvas {
   text-align: right;
 }
 
+.reveal-note {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+}
+
+.reveal-note strong {
+  text-align: right;
+}
+
 .reveal-head {
   background: #f2f6f4;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.history-header h2 {
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+}
+
+.history-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(74px, 1fr));
+  gap: 8px;
+  min-width: min(100%, 330px);
+}
+
+.history-score p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.history-score span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.history-score strong {
+  font-size: 1.1rem;
+}
+
+.history-panel ol {
+  display: grid;
+  gap: 8px;
+  max-height: 250px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.history-item {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border-left: 4px solid var(--gold);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.history-item.is-correct {
+  border-left-color: var(--green);
+}
+
+.history-item.is-incorrect {
+  border-left-color: var(--right);
+}
+
+.history-title,
+.history-decision,
+.history-metrics {
+  margin: 0;
+}
+
+.history-title {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.history-decision,
+.history-metrics {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .faction-header {
@@ -669,9 +766,20 @@ output {
   .control-card,
   .side-stats,
   .event-panel,
+  .history-panel,
   .reading-nav {
     max-width: 100%;
     overflow: hidden;
+  }
+
+  .history-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-score {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
   }
 
   .explosion-ticker {

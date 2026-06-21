@@ -23,6 +23,11 @@ const elements = {
   resultText: document.getElementById('resultText'),
   resultDetail: document.getElementById('resultDetail'),
   revealGrid: document.getElementById('revealGrid'),
+  historyPanel: document.getElementById('historyPanel'),
+  historyList: document.getElementById('historyList'),
+  trialCountValue: document.getElementById('trialCountValue'),
+  correctCountValue: document.getElementById('correctCountValue'),
+  accuracyValue: document.getElementById('accuracyValue'),
   leftRateValue: document.getElementById('leftRateValue'),
   leftMeanValue: document.getElementById('leftMeanValue'),
   leftVarianceValue: document.getElementById('leftVarianceValue'),
@@ -90,6 +95,8 @@ const simulation = {
   projectiles: [],
   explosions: [],
   events: [],
+  trialHistory: [],
+  trialCounter: 0,
 };
 
 function clamp(value, min, max) {
@@ -162,6 +169,66 @@ function answerLabel(answer) {
   if (answer === 'left') return 'Left';
   if (answer === 'right') return 'Right';
   return 'About equal';
+}
+
+function formatAggressionProduct(sideKey) {
+  const params = sides[sideKey].params;
+  return `${params.rate} x ${params.mean} = ${Math.round(expectedIntensity(sideKey))}`;
+}
+
+function formatObservedProduct(sideKey) {
+  const side = sides[sideKey];
+  return `${Math.round(side.totalSize)} x 60 / ${simulation.duration} = ${Math.round(observedIntensity(sideKey))}`;
+}
+
+function formatAccuracy(correctCount, trialCount) {
+  return trialCount === 0 ? '-' : `${Math.round((correctCount / trialCount) * 100)}%`;
+}
+
+function comparisonText(leftValue, rightValue) {
+  const scale = Math.max(leftValue, rightValue, 1);
+  const relativeDifference = Math.abs(leftValue - rightValue) / scale;
+  const percentGap = Math.round(relativeDifference * 100);
+
+  if (relativeDifference <= equalityTolerance) return `about equal (${percentGap}% gap)`;
+  return leftValue > rightValue ? `left higher (${percentGap}% gap)` : `right higher (${percentGap}% gap)`;
+}
+
+function buildTrialSnapshot(answer, number) {
+  const correctAnswer = trueAggressionAnswer();
+  const correct = answer === correctAnswer;
+
+  return {
+    number,
+    answer,
+    correctAnswer,
+    correct,
+    duration: simulation.duration,
+    left: {
+      params: { ...sides.left.params },
+      launches: sides.left.launches,
+      impacts: sides.left.impacts,
+      totalSize: sides.left.totalSize,
+      observedMean: observedMean('left'),
+      expectedAggression: expectedIntensity('left'),
+      observedAggression: observedIntensity('left'),
+    },
+    right: {
+      params: { ...sides.right.params },
+      launches: sides.right.launches,
+      impacts: sides.right.impacts,
+      totalSize: sides.right.totalSize,
+      observedMean: observedMean('right'),
+      expectedAggression: expectedIntensity('right'),
+      observedAggression: observedIntensity('right'),
+    },
+  };
+}
+
+function recordChallengeTrial(answer) {
+  simulation.trialCounter += 1;
+  simulation.trialHistory.unshift(buildTrialSnapshot(answer, simulation.trialCounter));
+  simulation.trialHistory = simulation.trialHistory.slice(0, 12);
 }
 
 function generateChallengeParameters() {
@@ -422,8 +489,9 @@ function setMode(mode) {
 }
 
 function chooseAnswer(answer) {
-  if (simulation.mode !== 'challenge' || !simulation.roundComplete) return;
+  if (simulation.mode !== 'challenge' || !simulation.roundComplete || simulation.revealed) return;
   simulation.selectedAnswer = answer;
+  recordChallengeTrial(answer);
   simulation.revealed = true;
   updateInterface();
 }
@@ -441,7 +509,7 @@ function updateInterface() {
   elements.impactLabel.textContent = `Impacts ${totalImpacts}`;
   elements.durationValue.textContent = `${simulation.duration} s`;
   elements.playButton.textContent = simulation.roundComplete
-    ? 'New Round'
+    ? simulation.mode === 'challenge' ? 'Run Next' : 'New Round'
     : simulation.running ? 'Pause' : 'Run';
   elements.resetButton.textContent = simulation.mode === 'challenge' ? 'New Round' : 'Reset';
   elements.playButton.classList.toggle('is-running', simulation.running);
@@ -473,6 +541,7 @@ function updateInterface() {
   elements.decisionPanel.hidden = !showDecision;
   elements.revealPanel.hidden = !(simulation.mode === 'challenge' && simulation.revealed);
   updateRevealPanel();
+  updateHistoryPanel();
 
   elements.eventList.replaceChildren(...simulation.events.map(event => {
     const item = document.createElement('li');
@@ -503,6 +572,15 @@ function revealRow(label, left, right) {
   `;
 }
 
+function revealNote(label, value) {
+  return `
+    <div class="reveal-row reveal-note">
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </div>
+  `;
+}
+
 function updateRevealPanel() {
   if (simulation.mode !== 'challenge' || !simulation.revealed) return;
 
@@ -512,12 +590,14 @@ function updateRevealPanel() {
   const rightExpected = expectedIntensity('right');
   const leftObservedMean = observedMean('left');
   const rightObservedMean = observedMean('right');
+  const expectedComparison = comparisonText(leftExpected, rightExpected);
+  const observedComparison = comparisonText(observedIntensity('left'), observedIntensity('right'));
 
   elements.resultLabel.textContent = correct ? 'Correct' : 'Not quite';
   elements.resultText.textContent = correctAnswer === 'equal'
     ? 'The sides were about equal'
     : `${answerLabel(correctAnswer)} was more aggressive`;
-  elements.resultDetail.textContent = `Aggression is scored as launch frequency x mean explosion size. You chose ${answerLabel(simulation.selectedAnswer)}.`;
+  elements.resultDetail.textContent = `Expected aggression = launch frequency x mean explosion size. Left: ${formatAggressionProduct('left')}/min; right: ${formatAggressionProduct('right')}/min. About equal means within 10%. You chose ${answerLabel(simulation.selectedAnswer)}.`;
   elements.revealPanel.classList.toggle('is-correct', correct);
   elements.revealPanel.classList.toggle('is-incorrect', !correct);
   elements.revealGrid.innerHTML = `
@@ -525,12 +605,45 @@ function updateRevealPanel() {
     ${revealRow('Launch frequency', parameterConfig.rate.formatter(sides.left.params.rate), parameterConfig.rate.formatter(sides.right.params.rate))}
     ${revealRow('Explosion mean', Math.round(sides.left.params.mean), Math.round(sides.right.params.mean))}
     ${revealRow('Explosion variance', Math.round(sides.left.params.variance), Math.round(sides.right.params.variance))}
-    ${revealRow('Expected intensity/min', Math.round(leftExpected), Math.round(rightExpected))}
+    ${revealRow('Expected aggression/min', formatAggressionProduct('left'), formatAggressionProduct('right'))}
+    ${revealNote('Expected comparison', expectedComparison)}
     ${revealRow('Observed launches', sides.left.launches, sides.right.launches)}
     ${revealRow('Observed impacts', sides.left.impacts, sides.right.impacts)}
+    ${revealRow('Observed total size', Math.round(sides.left.totalSize), Math.round(sides.right.totalSize))}
     ${revealRow('Observed mean size', leftObservedMean === null ? '-' : Math.round(leftObservedMean), rightObservedMean === null ? '-' : Math.round(rightObservedMean))}
-    ${revealRow('Observed intensity/min', Math.round(observedIntensity('left')), Math.round(observedIntensity('right')))}
+    ${revealRow('Observed aggression/min', formatObservedProduct('left'), formatObservedProduct('right'))}
+    ${revealNote('Observed comparison', observedComparison)}
   `;
+}
+
+function updateHistoryPanel() {
+  const trialCount = simulation.trialHistory.length;
+  const correctCount = simulation.trialHistory.filter(trial => trial.correct).length;
+
+  elements.historyPanel.hidden = simulation.mode !== 'challenge' || trialCount === 0;
+  elements.trialCountValue.textContent = String(trialCount);
+  elements.correctCountValue.textContent = String(correctCount);
+  elements.accuracyValue.textContent = formatAccuracy(correctCount, trialCount);
+
+  elements.historyList.replaceChildren(...simulation.trialHistory.map(trial => {
+    const item = document.createElement('li');
+    item.className = trial.correct ? 'history-item is-correct' : 'history-item is-incorrect';
+
+    const title = document.createElement('p');
+    title.className = 'history-title';
+    title.textContent = `Round ${trial.number}: ${trial.correct ? 'Correct' : 'Missed'}`;
+
+    const decision = document.createElement('p');
+    decision.className = 'history-decision';
+    decision.textContent = `Chose ${answerLabel(trial.answer)}; true answer ${answerLabel(trial.correctAnswer)}`;
+
+    const metrics = document.createElement('p');
+    metrics.className = 'history-metrics';
+    metrics.textContent = `Expected L ${Math.round(trial.left.expectedAggression)} / R ${Math.round(trial.right.expectedAggression)}; observed L ${Math.round(trial.left.observedAggression)} / R ${Math.round(trial.right.observedAggression)}`;
+
+    item.append(title, decision, metrics);
+    return item;
+  }));
 }
 
 function resizeCanvas() {
