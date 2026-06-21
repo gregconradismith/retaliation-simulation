@@ -625,32 +625,97 @@ function drawBattlefield(width, height) {
 }
 
 function drawBatteries(width, height) {
-  drawBattery(width * 0.105, height * 0.79, sides.left.color, 1);
-  drawBattery(width * 0.895, height * 0.79, sides.right.color, -1);
+  drawBattery(width * 0.12, height * 0.79, sides.left.color, 1);
+  drawBattery(width * 0.88, height * 0.79, sides.right.color, -1);
 }
 
 function drawBattery(x, y, color, direction) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = color;
+  ctx.scale(direction, 1);
   ctx.strokeStyle = '#16202b';
-  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
-  roundedRectPath(-28, 10, 56, 20, 6);
+  ctx.save();
+  ctx.rotate(-0.36);
+  ctx.fillStyle = '#2a3947';
+  roundedRectPath(18, -13, 70, 12, 3);
   ctx.fill();
   ctx.stroke();
 
-  ctx.save();
-  ctx.rotate(direction * -0.46);
-  ctx.fillRect(direction > 0 ? 0 : -46, -7, 46, 14);
-  ctx.strokeRect(direction > 0 ? 0 : -46, -7, 46, 14);
+  ctx.fillStyle = color;
+  roundedRectPath(82, -15, 12, 16, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = '#dce7ea';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(88, -14);
+  ctx.lineTo(88, 1);
+  ctx.stroke();
   ctx.restore();
 
-  ctx.fillStyle = '#263544';
+  ctx.strokeStyle = '#16202b';
+  ctx.lineWidth = 2;
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(-16, 32, 8, 0, Math.PI * 2);
-  ctx.arc(16, 32, 8, 0, Math.PI * 2);
+  ctx.moveTo(-44, 16);
+  ctx.lineTo(-32, 1);
+  ctx.lineTo(8, -5);
+  ctx.lineTo(48, 4);
+  ctx.lineTo(60, 17);
+  ctx.lineTo(48, 29);
+  ctx.lineTo(-33, 28);
+  ctx.closePath();
   ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#243241';
+  ctx.beginPath();
+  ctx.moveTo(-12, -2);
+  ctx.lineTo(18, -13);
+  ctx.lineTo(42, -4);
+  ctx.lineTo(32, 8);
+  ctx.lineTo(0, 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.beginPath();
+  ctx.moveTo(-28, 5);
+  ctx.lineTo(-8, 2);
+  ctx.lineTo(-2, 12);
+  ctx.lineTo(-30, 14);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#1e2934';
+  roundedRectPath(-50, 22, 116, 18, 9);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#101820';
+  [-34, -10, 14, 38].forEach(wheelX => {
+    ctx.beginPath();
+    ctx.arc(wheelX, 41, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#4e5b66';
+    ctx.beginPath();
+    ctx.arc(wheelX, 41, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#101820';
+  });
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-36, 11);
+  ctx.lineTo(40, 13);
+  ctx.stroke();
   ctx.restore();
 }
 
