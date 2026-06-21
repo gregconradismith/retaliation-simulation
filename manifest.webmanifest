@@ -1,0 +1,30 @@
+{
+  "name": "Retaliation Simulation",
+  "short_name": "Retaliation",
+  "description": "A static browser simulation scaffold for retaliation and repair dynamics.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7f3",
+  "theme_color": "#f4f7f3",
+  "icons": [
+    {
+      "src": "icons/retaliation-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/retaliation-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/retaliation-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Retaliation">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title>Retaliation Simulation</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="play-area" aria-labelledby="simulation-title">
+      <div class="top-bar">
+        <div>
+          <p class="eyebrow">Conflict dynamics</p>
+          <h1 id="simulation-title">Retaliation Simulation</h1>
+        </div>
+        <div class="status-strip" aria-label="Simulation status">
+          <span id="stepLabel">Step 0</span>
+          <span id="statusLabel">Stable</span>
+          <span id="scoreLabel">Containment 100</span>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="simulationCanvas" width="1200" height="760" aria-label="Animated network of retaliatory interactions"></canvas>
+      </div>
+
+      <div class="command-row" aria-label="Simulation controls">
+        <div class="button-cluster">
+          <button class="primary-button" id="playButton" type="button">Run</button>
+          <button id="stepButton" type="button">Step</button>
+          <button id="resetButton" type="button">Reset</button>
+        </div>
+        <p id="eventText" aria-live="polite">Ready</p>
+      </div>
+    </section>
+
+    <aside class="side-panel" aria-label="Parameters and metrics">
+      <section class="metric-card" aria-label="Current metrics">
+        <div class="metric-main">
+          <span id="meanLabel">0.00</span>
+          <span>mean grievance</span>
+        </div>
+        <div class="metric-grid">
+          <p><span>Active</span><strong id="activeLabel">0%</strong></p>
+          <p><span>Peak</span><strong id="peakLabel">0.00</strong></p>
+          <p><span>Cascades</span><strong id="cascadeLabel">0</strong></p>
+          <p><span>Floor</span><strong id="bestLabel">100</strong></p>
+        </div>
+      </section>
+
+      <div class="control-group">
+        <label for="populationSlider">Population</label>
+        <div class="range-row">
+          <input id="populationSlider" type="range" min="12" max="72" value="32" step="4">
+          <output id="populationValue" for="populationSlider">32</output>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="retaliationSlider">Retaliation</label>
+        <div class="range-row">
+          <input id="retaliationSlider" type="range" min="0" max="100" value="54">
+          <output id="retaliationValue" for="retaliationSlider">54</output>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="repairSlider">Repair</label>
+        <div class="range-row">
+          <input id="repairSlider" type="range" min="0" max="100" value="42">
+          <output id="repairValue" for="repairSlider">42</output>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="provocationSlider">Provocations</label>
+        <div class="range-row">
+          <input id="provocationSlider" type="range" min="0" max="100" value="24">
+          <output id="provocationValue" for="provocationSlider">24</output>
+        </div>
+      </div>
+
+      <section class="history" aria-label="Recent events">
+        <h2>Recent Events</h2>
+        <ol id="eventList"></ol>
+      </section>
+
+      <nav class="reading-nav" aria-label="Further reading">
+        <a href="further-reading.html">Model Notes</a>
+      </nav>
+    </aside>
+  </main>
+
+  <script src="app.js?v=2026-06-21"></script>
+</body>
+</html>
