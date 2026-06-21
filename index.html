@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21-rounds">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-ticker">
 </head>
 <body>
   <main class="app-shell">
@@ -87,6 +87,10 @@
 
       <div class="canvas-wrap">
         <canvas id="simulationCanvas" width="1200" height="720" aria-label="Artillery arcs and explosions between two sides"></canvas>
+        <div class="explosion-ticker" aria-label="Recent explosion times and sizes">
+          <p>Explosions</p>
+          <ol id="explosionTickerList"></ol>
+        </div>
       </div>
 
       <div class="command-row" aria-label="Simulation controls">
@@ -167,6 +171,6 @@
     </aside>
   </main>
 
-  <script src="app.js?v=2026-06-21-rounds"></script>
+  <script src="app.js?v=2026-06-21-ticker"></script>
 </body>
 </html>

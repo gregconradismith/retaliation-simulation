@@ -204,6 +204,7 @@ h2 {
 }
 
 .canvas-wrap {
+  position: relative;
   min-height: 0;
   padding: 12px 14px 6px;
 }
@@ -218,6 +219,58 @@ canvas {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
+}
+
+.explosion-ticker {
+  position: absolute;
+  left: 50%;
+  bottom: 66px;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 5px;
+  width: min(188px, calc(100% - 48px));
+  max-height: min(210px, 44%);
+  padding: 8px;
+  border: 1px solid rgba(22, 32, 43, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 8px 22px rgba(22, 32, 43, 0.12);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.explosion-ticker p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.explosion-ticker ol {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  justify-content: flex-start;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.explosion-ticker li {
+  padding: 5px 7px;
+  border-left: 4px solid var(--ticker-accent, var(--gold));
+  border-radius: 6px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.74rem;
+  font-weight: 820;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .command-row {
@@ -619,6 +672,17 @@ output {
   .reading-nav {
     max-width: 100%;
     overflow: hidden;
+  }
+
+  .explosion-ticker {
+    bottom: 46px;
+    width: min(160px, calc(100% - 44px));
+    max-height: 150px;
+    padding: 7px;
+  }
+
+  .explosion-ticker li {
+    font-size: 0.68rem;
   }
 
   .event-panel ol {

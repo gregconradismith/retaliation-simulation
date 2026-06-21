@@ -9,6 +9,7 @@ const elements = {
   impactLabel: document.getElementById('impactLabel'),
   eventText: document.getElementById('eventText'),
   eventList: document.getElementById('eventList'),
+  explosionTickerList: document.getElementById('explosionTickerList'),
   playButton: document.getElementById('playButton'),
   resetButton: document.getElementById('resetButton'),
   exploreModeButton: document.getElementById('exploreModeButton'),
@@ -276,6 +277,16 @@ function displayEvent(event) {
   return `${prefix} ${event.text}`;
 }
 
+function displayTickerEvent(event) {
+  const side = sides[event.sideKey];
+  const sideLabel = event.sideKey === 'left' ? 'L' : 'R';
+  return {
+    text: `${formatTime(event.time)}  ${sideLabel} size ${Math.round(event.size)}`,
+    sideKey: event.sideKey,
+    color: side.color,
+  };
+}
+
 function launchProjectile(sideKey, launchTime) {
   const side = sides[sideKey];
   const fromLeft = sideKey === 'left';
@@ -466,6 +477,18 @@ function updateInterface() {
   elements.eventList.replaceChildren(...simulation.events.map(event => {
     const item = document.createElement('li');
     item.textContent = displayEvent(event);
+    return item;
+  }));
+
+  const impactEvents = simulation.events
+    .filter(event => event.type === 'impact')
+    .slice(0, 7);
+  elements.explosionTickerList.replaceChildren(...impactEvents.map(event => {
+    const tickerEvent = displayTickerEvent(event);
+    const item = document.createElement('li');
+    item.dataset.side = tickerEvent.sideKey;
+    item.textContent = tickerEvent.text;
+    item.style.setProperty('--ticker-accent', tickerEvent.color);
     return item;
   }));
 }
