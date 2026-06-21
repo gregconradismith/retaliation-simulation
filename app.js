@@ -798,21 +798,26 @@ function drawBattery(x, y, color, direction, screenAngle) {
 
   ctx.save();
   ctx.rotate(barrelAngle);
+  ctx.fillStyle = '#1f2d3a';
+  roundedRectPath(-4, -8, 30, 16, 4);
+  ctx.fill();
+  ctx.stroke();
+
   ctx.fillStyle = '#2a3947';
-  roundedRectPath(18, -13, 70, 12, 3);
+  roundedRectPath(16, -6, 72, 12, 3);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = color;
-  roundedRectPath(82, -15, 12, 16, 3);
+  roundedRectPath(82, -8, 12, 16, 3);
   ctx.fill();
   ctx.stroke();
 
   ctx.strokeStyle = '#dce7ea';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(88, -14);
-  ctx.lineTo(88, 1);
+  ctx.moveTo(88, -7);
+  ctx.lineTo(88, 7);
   ctx.stroke();
   ctx.restore();
 
@@ -839,6 +844,12 @@ function drawBattery(x, y, color, direction, screenAngle) {
   ctx.lineTo(32, 8);
   ctx.lineTo(0, 10);
   ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#182330';
+  ctx.beginPath();
+  ctx.arc(8, 0, 8, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
