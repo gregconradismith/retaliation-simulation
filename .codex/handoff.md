@@ -1,5 +1,7 @@
 # Retaliation Simulation Handoff
 
+Date: 2026-06-21
+
 Created 2026-06-21 as a sibling static GitHub Pages/PWA game repository.
 
 Current state:
@@ -20,3 +22,15 @@ Important caution:
 
 The model is intentionally a toy perception game. It should not be described as
 a validated model of conflict escalation.
+
+## Migration Readiness Snapshot
+
+- Checked on 2026-06-21 before moving computers.
+- Non-interactive `git fetch --all --prune` completed successfully.
+- Root `README.md` points to `.codex/handoff.md` when a root README exists.
+
+Pre-edit Git state after fetch:
+
+```bash
+## main...origin/main
+```
