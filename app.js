@@ -55,6 +55,7 @@ const parameterConfig = {
 const equalityTolerance = 0.10;
 const sideKeys = ['left', 'right'];
 const timingModes = ['regular', 'random', 'bursty'];
+const eventLogLimit = 10;
 const timingLabels = {
   regular: 'Regular',
   random: 'Random',
@@ -461,7 +462,19 @@ function registerImpact(projectile) {
     y: projectile.targetY,
     size: projectile.size,
     startTime: projectile.impactTime,
-    duration: 1.05 + clamp(projectile.size / 180, 0, 0.55),
+    duration: 1.25 + clamp(projectile.size / 160, 0, 0.75),
+    sparks: Array.from({ length: 18 }, () => ({
+      angle: randomRange(-Math.PI * 0.95, -Math.PI * 0.05),
+      distance: randomRange(0.55, 1.18),
+      length: randomRange(0.08, 0.18),
+      width: randomRange(1.1, 2.7),
+    })),
+    smoke: Array.from({ length: 7 }, () => ({
+      angle: randomRange(-Math.PI * 0.86, -Math.PI * 0.14),
+      distance: randomRange(0.12, 0.82),
+      radius: randomRange(0.18, 0.42),
+      drift: randomRange(-0.16, 0.16),
+    })),
   });
 
   addEvent({
@@ -621,7 +634,7 @@ function updateInterface() {
   updateRevealPanel();
   updateHistoryPanel();
 
-  elements.eventList.replaceChildren(...simulation.events.map(event => {
+  elements.eventList.replaceChildren(...simulation.events.slice(0, eventLogLimit).map(event => {
     const item = document.createElement('li');
     item.textContent = displayEvent(event);
     return item;
@@ -755,7 +768,6 @@ function draw() {
   const { width, height } = resizeCanvas();
   ctx.clearRect(0, 0, width, height);
   drawBattlefield(width, height);
-  drawProjectilePaths(width, height);
   drawExplosions(width, height);
   drawProjectiles(width, height);
   drawBatteries(width, height);
@@ -920,25 +932,6 @@ function drawBattery(x, y, color, direction, screenAngle) {
   ctx.restore();
 }
 
-function drawProjectilePaths(width, height) {
-  simulation.projectiles.forEach(projectile => {
-    const side = sides[projectile.sideKey];
-    ctx.save();
-    ctx.strokeStyle = side.color;
-    ctx.globalAlpha = 0.22;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 9]);
-    ctx.beginPath();
-    for (let index = 0; index <= 30; index += 1) {
-      const point = projectilePoint(projectile, index / 30, width, height);
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
-    }
-    ctx.stroke();
-    ctx.restore();
-  });
-}
-
 function drawProjectiles(width, height) {
   simulation.projectiles.forEach(projectile => {
     const progress = clamp(
@@ -967,27 +960,86 @@ function drawExplosions(width, height) {
     const age = simulation.time - explosion.startTime;
     const progress = clamp(age / explosion.duration, 0, 1);
     const center = toCanvas({ x: explosion.x, y: explosion.y }, width, height);
-    const radius = (12 + explosion.size * 0.58) * (0.38 + progress * 0.9);
-    const alpha = 1 - progress;
+    const baseRadius = clamp(16 + explosion.size * 0.52, 22, 86);
+    const fireRadius = baseRadius * (0.45 + progress * 0.72);
+    const smokeRadius = baseRadius * (0.55 + progress * 0.92);
+    const fade = 1 - progress;
+    const flash = clamp(1 - progress * 2.4, 0, 1);
 
     ctx.save();
-    ctx.globalAlpha = alpha;
-    const gradient = ctx.createRadialGradient(center.x, center.y, 1, center.x, center.y, radius);
-    gradient.addColorStop(0, '#fff7d6');
-    gradient.addColorStop(0.34, '#f2c14e');
-    gradient.addColorStop(0.72, side.color);
-    gradient.addColorStop(1, 'rgba(22, 32, 43, 0)');
-    ctx.fillStyle = gradient;
+
+    ctx.globalAlpha = fade * 0.34;
+    ctx.fillStyle = '#594b3b';
     ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.ellipse(center.x, center.y + baseRadius * 0.34, baseRadius * (0.72 + progress * 0.35), baseRadius * 0.16, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = side.dark;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = alpha * 0.85;
+    (explosion.smoke || []).forEach(puff => {
+      const puffProgress = clamp(progress * 1.08, 0, 1);
+      const distance = smokeRadius * puff.distance * puffProgress;
+      const x = center.x + Math.cos(puff.angle) * distance + puff.drift * smokeRadius * puffProgress;
+      const y = center.y + Math.sin(puff.angle) * distance - smokeRadius * 0.1 * puffProgress;
+      const radius = smokeRadius * puff.radius * (0.58 + puffProgress * 0.88);
+      const smokeGradient = ctx.createRadialGradient(x, y, 1, x, y, radius);
+      smokeGradient.addColorStop(0, `rgba(74, 69, 62, ${0.46 * fade})`);
+      smokeGradient.addColorStop(0.62, `rgba(105, 96, 82, ${0.24 * fade})`);
+      smokeGradient.addColorStop(1, 'rgba(105, 96, 82, 0)');
+      ctx.fillStyle = smokeGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.78 * fade + 0.25 * flash;
+    const fireGradient = ctx.createRadialGradient(center.x, center.y, 1, center.x, center.y, fireRadius);
+    fireGradient.addColorStop(0, '#ffffff');
+    fireGradient.addColorStop(0.12, '#fff4ba');
+    fireGradient.addColorStop(0.34, '#ffb13d');
+    fireGradient.addColorStop(0.62, '#e85b25');
+    fireGradient.addColorStop(0.82, side.color);
+    fireGradient.addColorStop(1, 'rgba(22, 32, 43, 0)');
+    ctx.fillStyle = fireGradient;
     ctx.beginPath();
-    ctx.arc(center.x, center.y, radius * 0.58, 0, Math.PI * 2);
+    ctx.arc(center.x, center.y, fireRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = fade * 0.6;
+    ctx.strokeStyle = `rgba(255, 221, 145, ${fade})`;
+    ctx.lineWidth = 2.4;
+    (explosion.sparks || []).forEach(spark => {
+      const sparkProgress = clamp(progress * 1.45, 0, 1);
+      const start = baseRadius * 0.18;
+      const end = baseRadius * (0.34 + spark.distance * sparkProgress);
+      const tail = baseRadius * spark.length * (1 - sparkProgress * 0.35);
+      ctx.globalAlpha = fade * (0.88 - sparkProgress * 0.32);
+      ctx.lineWidth = spark.width;
+      ctx.beginPath();
+      ctx.moveTo(
+        center.x + Math.cos(spark.angle) * Math.max(start, end - tail),
+        center.y + Math.sin(spark.angle) * Math.max(start, end - tail)
+      );
+      ctx.lineTo(
+        center.x + Math.cos(spark.angle) * end,
+        center.y + Math.sin(spark.angle) * end
+      );
+      ctx.stroke();
+    });
+
+    ctx.globalAlpha = fade * 0.48;
+    ctx.strokeStyle = 'rgba(255, 246, 214, 0.82)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, baseRadius * (0.42 + progress * 0.55), 0, Math.PI * 2);
     ctx.stroke();
+
+    if (flash > 0) {
+      ctx.globalAlpha = flash * 0.75;
+      ctx.fillStyle = '#fffdf0';
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, baseRadius * (0.18 + flash * 0.18), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   });
 }
@@ -1007,6 +1059,7 @@ function drawTimeline(width, height) {
     const side = sides[sideKey];
     const x = centerX + trackOffsets[sideKey];
 
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
     ctx.lineWidth = 8;
     ctx.beginPath();
