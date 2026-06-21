@@ -532,14 +532,16 @@ canvas {
   text-transform: uppercase;
 }
 
-.stepper-row {
+.stepper-row,
+.timing-stepper {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 42px;
   gap: 8px;
   align-items: center;
 }
 
-.stepper-row button {
+.stepper-row button,
+.timing-stepper button {
   min-width: 42px;
   padding: 0;
   font-size: 1.32rem;

@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/retaliation-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/retaliation-icon-180.png">
-  <link rel="stylesheet" href="styles.css?v=2026-06-21-history">
+  <link rel="stylesheet" href="styles.css?v=2026-06-21-timing">
 </head>
 <body>
   <main class="app-shell">
@@ -46,6 +46,15 @@
           <button type="button" data-side="left" data-field="variance" data-delta="-1" aria-label="Decrease left explosion variance">-</button>
           <output id="leftVarianceValue" for="leftVarianceLabel">64</output>
           <button type="button" data-side="left" data-field="variance" data-delta="1" aria-label="Increase left explosion variance">+</button>
+        </div>
+      </section>
+
+      <section class="control-card parameter-card" aria-labelledby="leftTimingLabel">
+        <label id="leftTimingLabel">Launch timing</label>
+        <div class="timing-stepper">
+          <button type="button" data-side="left" data-field="timing" data-delta="-1" aria-label="Previous left launch timing">-</button>
+          <output id="leftTimingValue" for="leftTimingLabel">Random</output>
+          <button type="button" data-side="left" data-field="timing" data-delta="1" aria-label="Next left launch timing">+</button>
         </div>
       </section>
 
@@ -174,6 +183,15 @@
         </div>
       </section>
 
+      <section class="control-card parameter-card" aria-labelledby="rightTimingLabel">
+        <label id="rightTimingLabel">Launch timing</label>
+        <div class="timing-stepper">
+          <button type="button" data-side="right" data-field="timing" data-delta="-1" aria-label="Previous right launch timing">-</button>
+          <output id="rightTimingValue" for="rightTimingLabel">Random</output>
+          <button type="button" data-side="right" data-field="timing" data-delta="1" aria-label="Next right launch timing">+</button>
+        </div>
+      </section>
+
       <section class="side-stats" aria-label="Right side statistics">
         <p><span>Launches</span><strong id="rightLaunchesValue">0</strong></p>
         <p><span>Impacts</span><strong id="rightImpactsValue">0</strong></p>
@@ -183,6 +201,6 @@
     </aside>
   </main>
 
-  <script src="app.js?v=2026-06-21-history"></script>
+  <script src="app.js?v=2026-06-21-timing"></script>
 </body>
 </html>

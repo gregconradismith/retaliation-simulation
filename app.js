@@ -31,6 +31,7 @@ const elements = {
   leftRateValue: document.getElementById('leftRateValue'),
   leftMeanValue: document.getElementById('leftMeanValue'),
   leftVarianceValue: document.getElementById('leftVarianceValue'),
+  leftTimingValue: document.getElementById('leftTimingValue'),
   leftLaunchesValue: document.getElementById('leftLaunchesValue'),
   leftImpactsValue: document.getElementById('leftImpactsValue'),
   leftLastSizeValue: document.getElementById('leftLastSizeValue'),
@@ -38,6 +39,7 @@ const elements = {
   rightRateValue: document.getElementById('rightRateValue'),
   rightMeanValue: document.getElementById('rightMeanValue'),
   rightVarianceValue: document.getElementById('rightVarianceValue'),
+  rightTimingValue: document.getElementById('rightTimingValue'),
   rightLaunchesValue: document.getElementById('rightLaunchesValue'),
   rightImpactsValue: document.getElementById('rightImpactsValue'),
   rightLastSizeValue: document.getElementById('rightLastSizeValue'),
@@ -53,9 +55,15 @@ const parameterConfig = {
 
 const equalityTolerance = 0.10;
 const sideKeys = ['left', 'right'];
+const timingModes = ['regular', 'random', 'bursty'];
+const timingLabels = {
+  regular: 'Regular',
+  random: 'Random',
+  bursty: 'Bursty',
+};
 const defaultParameters = {
-  left: { rate: 10, mean: 42, variance: 64 },
-  right: { rate: 8, mean: 50, variance: 100 },
+  left: { rate: 10, mean: 42, variance: 64, timing: 'random' },
+  right: { rate: 8, mean: 50, variance: 100, timing: 'random' },
 };
 
 const sides = {
@@ -124,10 +132,29 @@ function sampleExplosionSize(side) {
   return clamp(mean + standardDeviation * sampleNormal(), 4, 120);
 }
 
-function sampleLaunchWait(ratePerMinute) {
-  if (ratePerMinute <= 0) return Infinity;
-  const ratePerSecond = ratePerMinute / 60;
-  return -Math.log(Math.max(Number.MIN_VALUE, Math.random())) / ratePerSecond;
+function sampleBurstyWait(meanWait) {
+  const shortProbability = 0.72;
+  const shortWaitMinimum = 0.10;
+  const shortWaitMaximum = 0.32;
+  const shortWaitMean = ((shortWaitMinimum + shortWaitMaximum) / 2) * meanWait;
+  // Choose the long-wait mean so the mixture still has expected wait meanWait.
+  const longWaitMean = (meanWait - shortProbability * shortWaitMean) / (1 - shortProbability);
+
+  if (Math.random() < shortProbability) {
+    return randomRange(shortWaitMinimum, shortWaitMaximum) * meanWait;
+  }
+
+  return randomRange(0.68, 1.32) * longWaitMean;
+}
+
+function sampleLaunchWait(params) {
+  if (params.rate <= 0) return Infinity;
+  const meanWait = 60 / params.rate;
+
+  if (params.timing === 'regular') return meanWait;
+  if (params.timing === 'bursty') return sampleBurstyWait(meanWait);
+
+  return -Math.log(Math.max(Number.MIN_VALUE, Math.random())) * meanWait;
 }
 
 function formatTime(seconds) {
@@ -169,6 +196,10 @@ function answerLabel(answer) {
   if (answer === 'left') return 'Left';
   if (answer === 'right') return 'Right';
   return 'About equal';
+}
+
+function timingLabel(timing) {
+  return timingLabels[timing] ?? timingLabels.random;
 }
 
 function formatAggressionProduct(sideKey) {
@@ -239,6 +270,7 @@ function generateChallengeParameters() {
       rate: randomStep(5, 22, 1),
       mean: randomStep(25, 80, 5),
       variance: variances[Math.floor(Math.random() * variances.length)],
+      timing: timingModes[Math.floor(Math.random() * timingModes.length)],
     };
   }
 
@@ -253,6 +285,7 @@ function generateChallengeParameters() {
         rate: rightRate,
         mean: rightMean,
         variance: variances[Math.floor(Math.random() * variances.length)],
+        timing: timingModes[Math.floor(Math.random() * timingModes.length)],
       },
     };
   }
@@ -277,7 +310,7 @@ function applyParameters(parameterSet) {
 
 function scheduleNextLaunch(sideKey, fromTime, initial = false) {
   const side = sides[sideKey];
-  const wait = sampleLaunchWait(side.params.rate);
+  const wait = sampleLaunchWait(side.params);
   const limitedInitialWait = initial && Number.isFinite(wait)
     ? Math.min(wait, randomRange(0.6, 1.9))
     : wait;
@@ -453,8 +486,17 @@ function advanceSimulation(deltaSeconds) {
 function adjustParameter(sideKey, field, direction) {
   if (simulation.mode === 'challenge' && !simulation.revealed) return;
 
-  const config = parameterConfig[field];
   const side = sides[sideKey];
+  if (field === 'timing') {
+    const currentIndex = timingModes.indexOf(side.params.timing);
+    const nextIndex = (currentIndex + direction + timingModes.length) % timingModes.length;
+    side.params.timing = timingModes[nextIndex];
+    scheduleNextLaunch(sideKey, simulation.time, true);
+    updateInterface();
+    return;
+  }
+
+  const config = parameterConfig[field];
   const nextValue = clamp(
     side.params[field] + direction * config.step,
     config.min,
@@ -527,6 +569,7 @@ function updateInterface() {
     elements[`${prefix}RateValue`].textContent = hidden ? 'Hidden' : parameterConfig.rate.formatter(side.params.rate);
     elements[`${prefix}MeanValue`].textContent = hidden ? 'Hidden' : parameterConfig.mean.formatter(side.params.mean);
     elements[`${prefix}VarianceValue`].textContent = hidden ? 'Hidden' : parameterConfig.variance.formatter(side.params.variance);
+    elements[`${prefix}TimingValue`].textContent = hidden ? 'Hidden' : timingLabel(side.params.timing);
     elements[`${prefix}LaunchesValue`].textContent = hidden ? '-' : String(side.launches);
     elements[`${prefix}ImpactsValue`].textContent = hidden ? '-' : String(side.impacts);
     elements[`${prefix}LastSizeValue`].textContent = hidden || side.lastSize === null
@@ -597,12 +640,13 @@ function updateRevealPanel() {
   elements.resultText.textContent = correctAnswer === 'equal'
     ? 'The sides were about equal'
     : `${answerLabel(correctAnswer)} was more aggressive`;
-  elements.resultDetail.textContent = `Expected aggression = launch frequency x mean explosion size. Left: ${formatAggressionProduct('left')}/min; right: ${formatAggressionProduct('right')}/min. About equal means within 10%. You chose ${answerLabel(simulation.selectedAnswer)}.`;
+  elements.resultDetail.textContent = `Expected aggression = launch frequency x mean explosion size. Timing changes clustering but preserves the same long-run launch frequency. Left: ${formatAggressionProduct('left')}/min; right: ${formatAggressionProduct('right')}/min. About equal means within 10%. You chose ${answerLabel(simulation.selectedAnswer)}.`;
   elements.revealPanel.classList.toggle('is-correct', correct);
   elements.revealPanel.classList.toggle('is-incorrect', !correct);
   elements.revealGrid.innerHTML = `
     <div class="reveal-row reveal-head"><span>Measure</span><strong>Left</strong><strong>Right</strong></div>
     ${revealRow('Launch frequency', parameterConfig.rate.formatter(sides.left.params.rate), parameterConfig.rate.formatter(sides.right.params.rate))}
+    ${revealRow('Launch timing', timingLabel(sides.left.params.timing), timingLabel(sides.right.params.timing))}
     ${revealRow('Explosion mean', Math.round(sides.left.params.mean), Math.round(sides.right.params.mean))}
     ${revealRow('Explosion variance', Math.round(sides.left.params.variance), Math.round(sides.right.params.variance))}
     ${revealRow('Expected aggression/min', formatAggressionProduct('left'), formatAggressionProduct('right'))}
@@ -639,7 +683,7 @@ function updateHistoryPanel() {
 
     const metrics = document.createElement('p');
     metrics.className = 'history-metrics';
-    metrics.textContent = `Expected L ${Math.round(trial.left.expectedAggression)} / R ${Math.round(trial.right.expectedAggression)}; observed L ${Math.round(trial.left.observedAggression)} / R ${Math.round(trial.right.observedAggression)}`;
+    metrics.textContent = `Timing L ${timingLabel(trial.left.params.timing)} / R ${timingLabel(trial.right.params.timing)}; expected L ${Math.round(trial.left.expectedAggression)} / R ${Math.round(trial.right.expectedAggression)}; observed L ${Math.round(trial.left.observedAggression)} / R ${Math.round(trial.right.observedAggression)}`;
 
     item.append(title, decision, metrics);
     return item;
