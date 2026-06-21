@@ -9,7 +9,6 @@ const elements = {
   impactLabel: document.getElementById('impactLabel'),
   eventText: document.getElementById('eventText'),
   eventList: document.getElementById('eventList'),
-  explosionTickerList: document.getElementById('explosionTickerList'),
   playButton: document.getElementById('playButton'),
   resetButton: document.getElementById('resetButton'),
   exploreModeButton: document.getElementById('exploreModeButton'),
@@ -77,6 +76,7 @@ const sides = {
     totalSize: 0,
     lastSize: null,
     nextLaunchAt: Infinity,
+    barrelAngle: null,
   },
   right: {
     label: 'Right',
@@ -88,6 +88,7 @@ const sides = {
     totalSize: 0,
     lastSize: null,
     nextLaunchAt: Infinity,
+    barrelAngle: null,
   },
 };
 
@@ -324,6 +325,7 @@ function resetSideStats() {
     side.impacts = 0;
     side.totalSize = 0;
     side.lastSize = null;
+    side.barrelAngle = null;
     scheduleNextLaunch(sideKey, 0, true);
   });
 }
@@ -377,14 +379,10 @@ function displayEvent(event) {
   return `${prefix} ${event.text}`;
 }
 
-function displayTickerEvent(event) {
-  const side = sides[event.sideKey];
-  const sideLabel = event.sideKey === 'left' ? 'L' : 'R';
-  return {
-    text: `${formatTime(event.time)}  ${sideLabel} size ${Math.round(event.size)}`,
-    sideKey: event.sideKey,
-    color: side.color,
-  };
+function launchArcAngle(projectile) {
+  const controlX = (projectile.startX + projectile.targetX) / 2;
+  const controlY = projectile.apexY;
+  return Math.atan2((controlY - projectile.startY) * 3, (controlX - projectile.startX) * 5);
 }
 
 function launchProjectile(sideKey, launchTime) {
@@ -393,10 +391,16 @@ function launchProjectile(sideKey, launchTime) {
   const size = sampleExplosionSize(side);
   const duration = randomRange(1.15, 1.85) + clamp(size / 240, 0, 0.35);
   const startX = fromLeft ? randomRange(0.075, 0.14) : randomRange(0.86, 0.925);
-  const targetX = fromLeft ? randomRange(0.66, 0.92) : randomRange(0.08, 0.34);
-  const startY = randomRange(0.72, 0.80);
+  const targetX = fromLeft ? randomRange(0.58, 0.94) : randomRange(0.06, 0.42);
+  const startY = randomRange(0.70, 0.80);
   const targetY = randomRange(0.73, 0.83);
-  const apexY = randomRange(0.12, 0.25) - clamp(size / 700, 0, 0.08);
+  const distance = Math.abs(targetX - startX);
+  const apexY = clamp(
+    randomRange(0.10, 0.36) - clamp(size / 850, 0, 0.10) - clamp(distance - 0.52, 0, 0.08),
+    0.05,
+    0.36
+  );
+  const launchAngle = launchArcAngle({ startX, startY, targetX, apexY });
 
   simulation.projectiles.push({
     sideKey,
@@ -411,6 +415,7 @@ function launchProjectile(sideKey, launchTime) {
   });
 
   side.launches += 1;
+  side.barrelAngle = launchAngle;
   addEvent({ time: launchTime, sideKey, type: 'launch' });
 }
 
@@ -592,17 +597,6 @@ function updateInterface() {
     return item;
   }));
 
-  const impactEvents = simulation.events
-    .filter(event => event.type === 'impact')
-    .slice(0, 7);
-  elements.explosionTickerList.replaceChildren(...impactEvents.map(event => {
-    const tickerEvent = displayTickerEvent(event);
-    const item = document.createElement('li');
-    item.dataset.side = tickerEvent.sideKey;
-    item.textContent = tickerEvent.text;
-    item.style.setProperty('--ticker-accent', tickerEvent.color);
-    return item;
-  }));
 }
 
 function revealRow(label, left, right) {
@@ -782,11 +776,19 @@ function drawBattlefield(width, height) {
 }
 
 function drawBatteries(width, height) {
-  drawBattery(width * 0.12, height * 0.79, sides.left.color, 1);
-  drawBattery(width * 0.88, height * 0.79, sides.right.color, -1);
+  drawBattery(width * 0.12, height * 0.79, sides.left.color, 1, sides.left.barrelAngle ?? -0.36);
+  drawBattery(width * 0.88, height * 0.79, sides.right.color, -1, sides.right.barrelAngle ?? -Math.PI + 0.36);
 }
 
-function drawBattery(x, y, color, direction) {
+function normalizeAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function drawBattery(x, y, color, direction, screenAngle) {
+  const barrelAngle = direction > 0
+    ? normalizeAngle(screenAngle)
+    : normalizeAngle(Math.PI - screenAngle);
+
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(direction, 1);
@@ -795,7 +797,7 @@ function drawBattery(x, y, color, direction) {
   ctx.lineCap = 'round';
 
   ctx.save();
-  ctx.rotate(-0.36);
+  ctx.rotate(barrelAngle);
   ctx.fillStyle = '#2a3947';
   roundedRectPath(18, -13, 70, 12, 3);
   ctx.fill();
@@ -955,39 +957,43 @@ function drawExplosions(width, height) {
 }
 
 function drawTimeline(width, height) {
-  const left = 22;
-  const right = width - 22;
-  const top = height - 54;
-  const bottom = height - 20;
-  const span = right - left;
+  const centerX = width / 2;
+  const top = 34;
+  const bottom = height * 0.82 - 20;
+  const span = bottom - top;
+  const trackOffsets = { left: -10, right: 10 };
 
   ctx.save();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
-  ctx.strokeStyle = 'rgba(22, 32, 43, 0.14)';
-  ctx.lineWidth = 1;
-  roundedRectPath(left, top, span, bottom - top, 8);
-  ctx.fill();
-  ctx.stroke();
+  ctx.lineCap = 'round';
 
   const windowSeconds = 20;
   sideKeys.forEach(sideKey => {
     const side = sides[sideKey];
-    const y = sideKey === 'left' ? top + 10 : top + 24;
+    const x = centerX + trackOffsets[sideKey];
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(x, bottom);
+    ctx.lineTo(x, top);
+    ctx.stroke();
+
     ctx.strokeStyle = side.color;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(left + 12, y);
-    ctx.lineTo(right - 12, y);
+    ctx.moveTo(x, bottom);
+    ctx.lineTo(x, top);
     ctx.stroke();
 
     simulation.events.forEach(event => {
-      if (event.sideKey !== sideKey) return;
+      if (event.sideKey !== sideKey || event.type !== 'impact') return;
       const age = simulation.time - event.time;
       if (age < 0 || age > windowSeconds) return;
-      const x = right - 14 - (age / windowSeconds) * (span - 28);
+      const y = bottom - (age / windowSeconds) * span;
+      const radius = clamp(2.8 + Math.sqrt(event.size ?? 0) * 0.28, 4, 8.5);
       ctx.fillStyle = side.color;
       ctx.beginPath();
-      ctx.arc(x, y, event.type === 'impact' ? 4.5 : 3, 0, Math.PI * 2);
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     });
   });
