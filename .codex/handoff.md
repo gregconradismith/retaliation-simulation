@@ -51,3 +51,11 @@ Pre-edit Git state after fetch:
 - Moved Blue and Red battlefield labels to the upper left and right corners of the canvas.
 - Removed the translucent field drawn around in-flight projectiles.
 - Bumped the service-worker cache name and app.js cache-busting query.
+
+## 2026-06-21 Horizontal Ticker Update
+
+- Replaced the central vertical ticker with two horizontal top-of-battlefield progress tracks.
+- The blue and red timeline lines grow from left to right over the round duration.
+- Launch ticks and impact-size circles appear along the elapsed portion of each horizontal track.
+- Moved Blue and Red battlefield labels beside their respective tanks.
+- Bumped the service-worker cache name and app.js cache-busting query.

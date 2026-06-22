@@ -809,13 +809,15 @@ function drawBattlefield(width, height) {
   }
   ctx.stroke();
 
-  ctx.fillStyle = sides.left.dark;
   ctx.font = '800 13px system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = sides.left.dark;
   ctx.textAlign = 'left';
-  ctx.fillText('BLUE', 22, 30);
+  ctx.fillText('BLUE', width * 0.035, height * 0.76);
   ctx.fillStyle = sides.right.dark;
   ctx.textAlign = 'right';
-  ctx.fillText('RED', width - 22, 30);
+  ctx.fillText('RED', width * 0.965, height * 0.76);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawBatteries(width, height) {
@@ -1045,46 +1047,46 @@ function drawExplosions(width, height) {
 }
 
 function drawTimeline(width, height) {
-  const centerX = width / 2;
-  const top = 34;
-  const bottom = height * 0.82 - 20;
-  const span = bottom - top;
-  const trackOffsets = { left: -10, right: 10 };
+  const left = 34;
+  const right = width - 34;
+  const span = right - left;
+  const progress = clamp(simulation.time / simulation.duration, 0, 1);
+  const progressX = left + span * progress;
+  const trackYs = { left: 28, right: 45 };
 
   ctx.save();
   ctx.lineCap = 'round';
 
-  const windowSeconds = 20;
   sideKeys.forEach(sideKey => {
     const side = sides[sideKey];
-    const x = centerX + trackOffsets[sideKey];
+    const y = trackYs[sideKey];
 
     ctx.globalAlpha = 1;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.moveTo(x, bottom);
-    ctx.lineTo(x, top);
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
     ctx.stroke();
 
     ctx.strokeStyle = side.color;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(x, bottom);
-    ctx.lineTo(x, top);
+    ctx.moveTo(left, y);
+    ctx.lineTo(progressX, y);
     ctx.stroke();
 
     simulation.timelineEvents.forEach(event => {
       if (event.sideKey !== sideKey) return;
-      const age = simulation.time - event.time;
-      if (age < 0 || age > windowSeconds) return;
-      const y = bottom - (age / windowSeconds) * span;
+      if (event.time > simulation.time) return;
+      const x = left + (event.time / simulation.duration) * span;
+      if (x > progressX) return;
       if (event.type === 'launch') {
         ctx.strokeStyle = side.dark;
         ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.moveTo(x - 5.5, y);
-        ctx.lineTo(x + 5.5, y);
+        ctx.moveTo(x, y - 5.5);
+        ctx.lineTo(x, y + 5.5);
         ctx.stroke();
       } else if (event.type === 'impact') {
         const radius = clamp(2.4 + Math.pow(event.size ?? 0, 0.72) * 0.42, 5, 14);
