@@ -59,3 +59,9 @@ Pre-edit Git state after fetch:
 - Launch ticks and impact-size circles appear along the elapsed portion of each horizontal track.
 - Moved Blue and Red battlefield labels beside their respective tanks.
 - Bumped the service-worker cache name and app.js cache-busting query.
+
+## 2026-06-21 Civilian Buildings Update
+
+- Added a small school to the right of the blue tank and a small hospital to the left of the red tank.
+- Kept the buildings on the battlefield layer behind tanks, projectiles, and explosions.
+- Bumped the service-worker cache name and app.js cache-busting query.

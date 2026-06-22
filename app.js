@@ -809,6 +809,9 @@ function drawBattlefield(width, height) {
   }
   ctx.stroke();
 
+  drawCivilianBuilding(width * 0.35, groundY - 4, Math.min(width, height) * 0.15, 'school');
+  drawCivilianBuilding(width * 0.65, groundY - 4, Math.min(width, height) * 0.15, 'hospital');
+
   ctx.font = '800 13px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = sides.left.dark;
@@ -818,6 +821,78 @@ function drawBattlefield(width, height) {
   ctx.textAlign = 'right';
   ctx.fillText('RED', width * 0.965, height * 0.76);
   ctx.textBaseline = 'alphabetic';
+}
+
+function drawCivilianBuilding(x, baselineY, size, type) {
+  const width = clamp(size, 44, 72);
+  const height = width * 0.66;
+  const bodyX = x - width / 2;
+  const bodyY = baselineY - height;
+  const roofHeight = height * 0.28;
+  const label = type === 'school' ? 'SCHOOL' : 'HOSPITAL';
+  const accent = type === 'school' ? '#d89d42' : '#c2412d';
+
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  ctx.fillStyle = 'rgba(54, 50, 43, 0.16)';
+  ctx.beginPath();
+  ctx.ellipse(x, baselineY + 3, width * 0.58, width * 0.09, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#f6efe2';
+  ctx.strokeStyle = '#6f6658';
+  ctx.lineWidth = 1.6;
+  roundedRectPath(bodyX, bodyY, width, height, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = type === 'school' ? '#8d5f33' : '#5f6f73';
+  ctx.beginPath();
+  ctx.moveTo(bodyX - width * 0.08, bodyY + roofHeight);
+  ctx.lineTo(x, bodyY - roofHeight * 0.62);
+  ctx.lineTo(bodyX + width * 1.08, bodyY + roofHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#dce7ea';
+  const windowY = bodyY + height * 0.38;
+  [bodyX + width * 0.22, bodyX + width * 0.68].forEach(windowX => {
+    roundedRectPath(windowX, windowY, width * 0.15, height * 0.18, 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = '#6b5540';
+  roundedRectPath(x - width * 0.08, baselineY - height * 0.23, width * 0.16, height * 0.23, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  if (type === 'hospital') {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - width * 0.12, bodyY + height * 0.23);
+    ctx.lineTo(x + width * 0.12, bodyY + height * 0.23);
+    ctx.moveTo(x, bodyY + height * 0.11);
+    ctx.lineTo(x, bodyY + height * 0.35);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(x, bodyY + height * 0.23, width * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#39454f';
+  ctx.font = '800 8px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, bodyY + height * 0.72);
+  ctx.restore();
 }
 
 function drawBatteries(width, height) {
