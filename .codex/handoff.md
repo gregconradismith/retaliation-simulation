@@ -1,6 +1,6 @@
 # Retaliation Simulation Handoff
 
-Date: 2026-06-21
+Date: 2026-06-22
 
 Created 2026-06-21 as a sibling static GitHub Pages/PWA game repository.
 
