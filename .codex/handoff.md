@@ -65,3 +65,9 @@ Pre-edit Git state after fetch:
 - Added a small school to the right of the blue tank and a small hospital to the left of the red tank.
 - Kept the buildings on the battlefield layer behind tanks, projectiles, and explosions.
 - Bumped the service-worker cache name and app.js cache-busting query.
+
+## 2026-06-21 Building Cleanup Update
+
+- Reworked the school and hospital drawings with larger, cleaner silhouettes and simpler symbols.
+- Reduced tiny cramped details so the buildings read better at desktop and mobile canvas sizes.
+- Bumped the service-worker cache name and app.js cache-busting query.

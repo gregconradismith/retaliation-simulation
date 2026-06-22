@@ -809,8 +809,8 @@ function drawBattlefield(width, height) {
   }
   ctx.stroke();
 
-  drawCivilianBuilding(width * 0.35, groundY - 4, Math.min(width, height) * 0.15, 'school');
-  drawCivilianBuilding(width * 0.65, groundY - 4, Math.min(width, height) * 0.15, 'hospital');
+  drawCivilianBuilding(width * 0.36, groundY - 4, Math.min(width, height) * 0.18, 'school');
+  drawCivilianBuilding(width * 0.64, groundY - 4, Math.min(width, height) * 0.18, 'hospital');
 
   ctx.font = '800 13px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
@@ -824,13 +824,13 @@ function drawBattlefield(width, height) {
 }
 
 function drawCivilianBuilding(x, baselineY, size, type) {
-  const width = clamp(size, 44, 72);
-  const height = width * 0.66;
+  const width = clamp(size, 58, 86);
+  const height = width * 0.6;
   const bodyX = x - width / 2;
   const bodyY = baselineY - height;
-  const roofHeight = height * 0.28;
-  const label = type === 'school' ? 'SCHOOL' : 'HOSPITAL';
-  const accent = type === 'school' ? '#d89d42' : '#c2412d';
+  const isSchool = type === 'school';
+  const roofColor = isSchool ? '#7b5436' : '#526a70';
+  const accent = isSchool ? '#c9903c' : '#c2412d';
 
   ctx.save();
   ctx.lineJoin = 'round';
@@ -841,57 +841,81 @@ function drawCivilianBuilding(x, baselineY, size, type) {
   ctx.ellipse(x, baselineY + 3, width * 0.58, width * 0.09, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#f6efe2';
-  ctx.strokeStyle = '#6f6658';
-  ctx.lineWidth = 1.6;
+  ctx.fillStyle = isSchool ? '#f2dfbd' : '#f7f8f5';
+  ctx.strokeStyle = '#4c5960';
+  ctx.lineWidth = 1.8;
   roundedRectPath(bodyX, bodyY, width, height, 3);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = type === 'school' ? '#8d5f33' : '#5f6f73';
-  ctx.beginPath();
-  ctx.moveTo(bodyX - width * 0.08, bodyY + roofHeight);
-  ctx.lineTo(x, bodyY - roofHeight * 0.62);
-  ctx.lineTo(bodyX + width * 1.08, bodyY + roofHeight);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#dce7ea';
-  const windowY = bodyY + height * 0.38;
-  [bodyX + width * 0.22, bodyX + width * 0.68].forEach(windowX => {
-    roundedRectPath(windowX, windowY, width * 0.15, height * 0.18, 2);
-    ctx.fill();
-    ctx.stroke();
-  });
-
-  ctx.fillStyle = '#6b5540';
-  roundedRectPath(x - width * 0.08, baselineY - height * 0.23, width * 0.16, height * 0.23, 2);
-  ctx.fill();
-  ctx.stroke();
-
-  if (type === 'hospital') {
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x - width * 0.12, bodyY + height * 0.23);
-    ctx.lineTo(x + width * 0.12, bodyY + height * 0.23);
-    ctx.moveTo(x, bodyY + height * 0.11);
-    ctx.lineTo(x, bodyY + height * 0.35);
-    ctx.stroke();
-  } else {
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.arc(x, bodyY + height * 0.23, width * 0.07, 0, Math.PI * 2);
+  if (isSchool) {
+    ctx.fillStyle = '#e8c98f';
+    roundedRectPath(x - width * 0.15, bodyY - height * 0.15, width * 0.3, height * 0.28, 3);
     ctx.fill();
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#39454f';
-  ctx.font = '800 8px system-ui, sans-serif';
+  ctx.fillStyle = roofColor;
+  ctx.beginPath();
+  ctx.moveTo(bodyX - width * 0.08, bodyY + height * 0.15);
+  ctx.lineTo(x, bodyY - height * 0.20);
+  ctx.lineTo(bodyX + width * 1.08, bodyY + height * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = isSchool ? '#5f7f93' : '#9fb8c1';
+  const windowY = bodyY + height * 0.34;
+  [bodyX + width * 0.18, bodyX + width * 0.68].forEach(windowX => {
+    roundedRectPath(windowX, windowY, width * 0.14, height * 0.16, 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = '#5d4938';
+  roundedRectPath(x - width * 0.085, baselineY - height * 0.28, width * 0.17, height * 0.28, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  if (isSchool) {
+    ctx.fillStyle = '#f7f1df';
+    ctx.beginPath();
+    ctx.arc(x, bodyY + height * 0.08, width * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#4c5960';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, bodyY + height * 0.08);
+    ctx.lineTo(x, bodyY + height * 0.035);
+    ctx.moveTo(x, bodyY + height * 0.08);
+    ctx.lineTo(x + width * 0.035, bodyY + height * 0.08);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#eef2f1';
+    roundedRectPath(bodyX + width * 0.38, bodyY - height * 0.12, width * 0.24, height * 0.18, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x - width * 0.14, bodyY + height * 0.22);
+    ctx.lineTo(x + width * 0.14, bodyY + height * 0.22);
+    ctx.moveTo(x, bodyY + height * 0.08);
+    ctx.lineTo(x, bodyY + height * 0.36);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = isSchool ? accent : '#4c5960';
+  ctx.fillRect(bodyX + width * 0.1, baselineY - 4, width * 0.8, 4);
+
+  ctx.fillStyle = '#26343b';
+  ctx.font = '800 9px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(label, x, bodyY + height * 0.72);
+  ctx.fillText(isSchool ? 'SCHOOL' : 'H', x, bodyY + height * 0.7);
   ctx.restore();
 }
 
