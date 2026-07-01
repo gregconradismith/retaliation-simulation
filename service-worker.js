@@ -1,6 +1,6 @@
 'use strict';
 
-const cacheName = 'retaliation-simulation-v18';
+const cacheName = 'retaliation-simulation-v19';
 const appShell = [
   './',
   './index.html',
